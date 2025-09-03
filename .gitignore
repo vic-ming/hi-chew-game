@@ -91,3 +91,7 @@ jspm_packages/
 # Temporary folders
 tmp/
 temp/
+
+# Large image files (over 100MB)
+src/assets/route-A.png
+src/assets/route-B.png
