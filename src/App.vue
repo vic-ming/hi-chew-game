@@ -418,13 +418,13 @@ export default {
   /* 大螢幕優化 */
   @media (min-width: 1200px) {
     .app {
-      max-width: 600px;
+      /* max-width: 600px; */
     }
     
-    .path-svg {
+    /* .path-svg {
       max-width: 600px;
       max-height: 900px;
-    }
+    } */
   }
 
   .finish-zone {
