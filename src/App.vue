@@ -384,11 +384,11 @@ export default {
     width: 100vw;
     height: 100vh;
     margin: 0 auto;
-    /* background-image: url('./assets/background.jpg');
+    background-image: url('./assets/background.jpg');
     background-size: 100%;
     background-position: center;
-    background-repeat: no-repeat; */
-    background-color: #030b7a;
+    background-repeat: no-repeat;
+    /* background-color: #030b7a; */
     touch-action: none; /* 防止手機上的滾動和縮放 */
     user-select: none; /* 防止文字選取 */
     font-family: 'Arial', sans-serif;
