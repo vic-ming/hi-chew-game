@@ -70,7 +70,7 @@
             v-if="gameState === 'playing'"
             :cx="playerPosition.x" 
             :cy="playerPosition.y" 
-            r="42.5" 
+            r="32.5" 
             fill="none" 
             stroke="rgba(255,0,0,0.5)" 
             stroke-width="2"
@@ -129,7 +129,7 @@ export default {
       gameState: 'playing', // ready, playing, gameOver, completed
       score: 0,
       bestScore: parseInt(localStorage.getItem('bestScore')) || 0,
-      playerPosition: { x: 143, y: 70 }, // 起點位置
+      playerPosition: { x: 113, y: 70 }, // 起點位置
       isShaking: false,
       gameArea: null,
       svgElement: null,
@@ -149,7 +149,11 @@ export default {
       pendingPosition: null,
       // 閃電效果
       showLightning: false,
-      lightningPosition: { x: 0, y: 0 }
+      lightningPosition: { x: 0, y: 0 },
+      // 性能優化
+      cachedRect: null,
+      lastMoveTime: 0,
+      lastCollisionCheck: 0
     }
   },
   mounted() {
@@ -235,7 +239,7 @@ export default {
     startGame() {
       this.gameState = 'playing';
       this.score = 0;
-      this.playerPosition = { x: 143, y: 70 };
+      this.playerPosition = { x: 113, y: 70 };
       this.gameStartTime = Date.now();
       this.showLightning = false; // 重置閃電效果
       
@@ -249,7 +253,7 @@ export default {
     
     restartGame() {
       this.gameState = 'playing';
-      this.playerPosition = { x: 143, y: 70 };
+      this.playerPosition = { x: 113, y: 70 };
       this.isShaking = false;
       this.showLightning = false; // 重置閃電效果
       if (this.scoreInterval) {
@@ -272,14 +276,31 @@ export default {
       const y = relativeY * 1283;
       
       // 使用更大的容錯範圍來確保可以抓取
-      const tolerance = 80; // 進一步增加容錯範圍
+      const tolerance = 100; // 進一步增加容錯範圍
       
       const isOnPlayer = Math.abs(x - this.playerPosition.x) <= tolerance && 
                         Math.abs(y - this.playerPosition.y) <= tolerance;
       
-      console.log('點擊:', x, y, '玩家:', this.playerPosition.x, this.playerPosition.y, '距離:', Math.abs(x - this.playerPosition.x), Math.abs(y - this.playerPosition.y), '容錯:', tolerance, '可抓取:', isOnPlayer);
+      console.log('=== 拖動檢測 ===');
+      console.log('點擊位置:', x, y);
+      console.log('玩家位置:', this.playerPosition.x, this.playerPosition.y);
+      console.log('距離:', Math.abs(x - this.playerPosition.x), Math.abs(y - this.playerPosition.y));
+      console.log('容錯範圍:', tolerance);
+      console.log('可抓取:', isOnPlayer);
       
-      if (!isOnPlayer) return;
+      // 如果正常檢測失敗，嘗試更寬鬆的檢測
+      if (!isOnPlayer) {
+        const looseTolerance = 150;
+        const isOnPlayerLoose = Math.abs(x - this.playerPosition.x) <= looseTolerance && 
+                              Math.abs(y - this.playerPosition.y) <= looseTolerance;
+        console.log('寬鬆檢測 (容錯:', looseTolerance, '):', isOnPlayerLoose);
+        
+        if (!isOnPlayerLoose) {
+          console.log('=== 拖動檢測失敗 ===');
+          return;
+        }
+        console.log('使用寬鬆檢測成功');
+      }
       
       e.preventDefault();
       this.isMouseDown = true;
@@ -301,14 +322,31 @@ export default {
       const y = relativeY * 1283;
       
       // 使用更大的容錯範圍來確保可以抓取
-      const tolerance = 80; // 進一步增加容錯範圍
+      const tolerance = 100; // 進一步增加容錯範圍
       
       const isOnPlayer = Math.abs(x - this.playerPosition.x) <= tolerance && 
                         Math.abs(y - this.playerPosition.y) <= tolerance;
       
-      console.log('觸摸:', x, y, '玩家:', this.playerPosition.x, this.playerPosition.y, '距離:', Math.abs(x - this.playerPosition.x), Math.abs(y - this.playerPosition.y), '容錯:', tolerance, '可抓取:', isOnPlayer);
+      console.log('=== 觸摸檢測 ===');
+      console.log('觸摸位置:', x, y);
+      console.log('玩家位置:', this.playerPosition.x, this.playerPosition.y);
+      console.log('距離:', Math.abs(x - this.playerPosition.x), Math.abs(y - this.playerPosition.y));
+      console.log('容錯範圍:', tolerance);
+      console.log('可抓取:', isOnPlayer);
       
-      if (!isOnPlayer) return;
+      // 如果正常檢測失敗，嘗試更寬鬆的檢測
+      if (!isOnPlayer) {
+        const looseTolerance = 150;
+        const isOnPlayerLoose = Math.abs(x - this.playerPosition.x) <= looseTolerance && 
+                              Math.abs(y - this.playerPosition.y) <= looseTolerance;
+        console.log('寬鬆檢測 (容錯:', looseTolerance, '):', isOnPlayerLoose);
+        
+        if (!isOnPlayerLoose) {
+          console.log('=== 觸摸檢測失敗 ===');
+          return;
+        }
+        console.log('使用寬鬆檢測成功');
+      }
       
       e.preventDefault();
       this.isMouseDown = true;
@@ -338,9 +376,16 @@ export default {
     
     
     updatePlayerPosition(e) {
-      // 使用與抓取檢測相同的座標轉換方法
-      const rect = this.gameArea.getBoundingClientRect();
-      const svgRect = this.svgElement.getBoundingClientRect();
+      // 性能優化：緩存矩形值，減少DOM查詢
+      if (!this.cachedRect || Date.now() - this.lastMoveTime > 100) {
+        this.cachedRect = {
+          gameArea: this.gameArea.getBoundingClientRect(),
+          svg: this.svgElement.getBoundingClientRect()
+        };
+        this.lastMoveTime = Date.now();
+      }
+      
+      const svgRect = this.cachedRect.svg;
       
       // 計算相對於SVG的位置
       const relativeX = (e.clientX - svgRect.left) / svgRect.width;
@@ -354,27 +399,33 @@ export default {
       const clampedX = Math.max(0, Math.min(760, x));
       const clampedY = Math.max(0, Math.min(1283, y));
       
-      // 先檢查碰撞，如果碰撞則立即停止拖動
-      if (this.checkCollision(clampedX, clampedY)) {
-        this.handleCollision();
-        return;
-      }
-      
-      // 檢查勝利條件
-      if (this.checkWinCondition(clampedX, clampedY)) {
-        this.winGame();
-        return;
-      }
-      
-      // 只有在沒有碰撞和勝利的情況下才更新位置
+      // 立即更新位置，提升響應性
       this.playerPosition = { x: clampedX, y: clampedY };
+      
+      // 減少碰撞檢測頻率：每50ms檢測一次
+      const now = Date.now();
+      if (now - this.lastCollisionCheck > 50) {
+        this.lastCollisionCheck = now;
+        
+        // 檢查碰撞
+        if (this.checkCollision(clampedX, clampedY)) {
+          this.handleCollision();
+          return;
+        }
+        
+        // 檢查勝利條件
+        if (this.checkWinCondition(clampedX, clampedY)) {
+          this.winGame();
+          return;
+        }
+      }
     },
     
     checkCollision(x, y) {
-      // 合理的碰撞檢測 - 檢查草莓糖果是否碰到路徑
+      // 碰撞檢測範圍與元件大小一致
       const blockSize = 50; // 草莓糖果大小
       const pathWidth = 15; // 路徑寬度
-      const tolerance = (blockSize / 2) + (pathWidth / 2) + 5; // 區塊半徑 + 路徑半寬 + 5px緩衝
+      const tolerance = (blockSize / 2) + (pathWidth / 2); // 區塊半徑 + 路徑半寬，無額外緩衝
       
       for (let path of this.pathElements) {
         const pathLength = path.getTotalLength();
