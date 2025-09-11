@@ -2,13 +2,13 @@
   <div class="home">
     <div class="home-container" v-if="step === 1">
         <img src="@/assets/pc-1.jpg" alt="" class="pc-img" @click="startGame">
-        <img src="@/assets/mb-1.jpg" alt="" class="mb-img" @click="startGame">
+        <img src="@/assets/mb-1.png" alt="" class="mb-img" @click="startGame">
     </div>
     
     <!-- 遊戲說明彈窗 -->
     <div class="home-container"  v-if="step === 2">
         <img src="@/assets/pc-2.jpg" alt="" class="pc-img" @click="router.push('/game')">
-        <img src="@/assets/mb-2.jpg" alt="" class="mb-img" @click="router.push('/game')">
+        <img src="@/assets/mb-2.png" alt="" class="mb-img" @click="router.push('/game')">
     </div>
   </div>
 </template>

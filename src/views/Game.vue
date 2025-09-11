@@ -43,15 +43,13 @@
             class="end-zone"
           />
           
-          <!-- 玩家元件（可拖動的黃色區塊） -->
-          <rect 
-            :x="playerPosition.x - 15" 
-            :y="playerPosition.y - 15" 
-            width="30" 
-            height="30"
-            fill="#ffd93d"
-            stroke="#ff6b6b"
-            stroke-width="2"
+          <!-- 玩家元件（可拖動的草莓糖果） -->
+          <image 
+            :x="playerPosition.x - 25" 
+            :y="playerPosition.y - 25" 
+            width="50"
+            height="50"
+            :href="candyImage"
             class="player"
             :class="{ 'shaking': isShaking, 'dragging': isMouseDown }"
           />
@@ -61,7 +59,7 @@
             v-if="gameState === 'playing'"
             :cx="playerPosition.x" 
             :cy="playerPosition.y" 
-            r="27.5" 
+            r="42.5" 
             fill="none" 
             stroke="rgba(255,0,0,0.5)" 
             stroke-width="2"
@@ -108,6 +106,9 @@
 
 <script>
 import candyStrawberry from '../assets/candy_strawberry.png'
+import successSound from '../assets/mp3/success.mp3'
+import collisionSound from '../assets/mp3/collision.mp3'
+import failSound from '../assets/mp3/fail.mp3'
 
 export default {
   name: 'Game',
@@ -124,7 +125,15 @@ export default {
       isMouseDown: false,
       gameStartTime: null,
       scoreInterval: null,
-      candyImage: candyStrawberry
+      candyImage: candyStrawberry,
+      // 音效相關
+      audioContext: null,
+      successAudio: null,
+      collisionAudio: null,
+      failAudio: null,
+      // 拖動優化
+      animationFrameId: null,
+      pendingPosition: null
     }
   },
   mounted() {
@@ -132,6 +141,7 @@ export default {
     this.svgElement = this.$refs.svgElement;
     this.setupEventListeners();
     this.initializePaths();
+    this.initializeAudio();
     this.startGame();
   },
   beforeUnmount() {
@@ -139,19 +149,23 @@ export default {
     if (this.scoreInterval) {
       clearInterval(this.scoreInterval);
     }
+    // 清理動畫幀
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+    }
   },
   methods: {
     setupEventListeners() {
-      // 滑鼠事件
-      this.gameArea.addEventListener('mousedown', this.handleStart);
-      this.gameArea.addEventListener('mousemove', this.handleMove);
-      this.gameArea.addEventListener('mouseup', this.handleEnd);
-      this.gameArea.addEventListener('mouseleave', this.handleEnd);
+      // 滑鼠事件 - 優化配置
+      this.gameArea.addEventListener('mousedown', this.handleStart, { passive: false });
+      this.gameArea.addEventListener('mousemove', this.handleMove, { passive: false });
+      this.gameArea.addEventListener('mouseup', this.handleEnd, { passive: false });
+      this.gameArea.addEventListener('mouseleave', this.handleEnd, { passive: false });
       
       // 觸控事件
       this.gameArea.addEventListener('touchstart', this.handleTouchStart, { passive: false });
       this.gameArea.addEventListener('touchmove', this.handleTouchMove, { passive: false });
-      this.gameArea.addEventListener('touchend', this.handleEnd);
+      this.gameArea.addEventListener('touchend', this.handleEnd, { passive: false });
       
       // 防止右鍵選單
       this.gameArea.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -170,6 +184,36 @@ export default {
     initializePaths() {
       // 獲取路徑元素
       this.pathElements = this.svgElement.querySelectorAll('path');
+    },
+    
+    initializeAudio() {
+      // 初始化音效
+      try {
+        this.successAudio = new Audio(successSound);
+        this.collisionAudio = new Audio(collisionSound);
+        this.failAudio = new Audio(failSound);
+        
+        // 設置音效屬性
+        [this.successAudio, this.collisionAudio, this.failAudio].forEach(audio => {
+          audio.preload = 'auto';
+          audio.volume = 0.7; // 設置音量
+        });
+      } catch (error) {
+        console.warn('音效初始化失敗:', error);
+      }
+    },
+    
+    playSound(audio) {
+      if (audio) {
+        try {
+          audio.currentTime = 0; // 重置播放位置
+          audio.play().catch(error => {
+            console.warn('音效播放失敗:', error);
+          });
+        } catch (error) {
+          console.warn('音效播放錯誤:', error);
+        }
+      }
     },
     
     startGame() {
@@ -199,22 +243,23 @@ export default {
     handleStart(e) {
       if (this.gameState !== 'playing') return;
       
-      // 檢查是否點擊在玩家元件上
+      // 使用SVG的getScreenCTM方法來獲取更精確的座標轉換
       const rect = this.gameArea.getBoundingClientRect();
-      const relativeX = (e.clientX - rect.left) / rect.width;
-      const relativeY = (e.clientY - rect.top) / rect.height;
+      const svgRect = this.svgElement.getBoundingClientRect();
+      
+      // 計算相對於SVG的位置
+      const relativeX = (e.clientX - svgRect.left) / svgRect.width;
+      const relativeY = (e.clientY - svgRect.top) / svgRect.height;
       const x = relativeX * 760;
       const y = relativeY * 1283;
       
-      // 檢查點擊位置是否在玩家元件附近（使用更大的容錯範圍）
-      const tolerance = 50; // 更大的容錯範圍
+      // 使用更大的容錯範圍來確保可以抓取
+      const tolerance = 80; // 進一步增加容錯範圍
+      
       const isOnPlayer = Math.abs(x - this.playerPosition.x) <= tolerance && 
                         Math.abs(y - this.playerPosition.y) <= tolerance;
       
-      console.log('點擊位置:', x, y);
-      console.log('玩家位置:', this.playerPosition.x, this.playerPosition.y);
-      console.log('距離:', Math.abs(x - this.playerPosition.x), Math.abs(y - this.playerPosition.y));
-      console.log('是否在玩家上:', isOnPlayer);
+      console.log('點擊:', x, y, '玩家:', this.playerPosition.x, this.playerPosition.y, '距離:', Math.abs(x - this.playerPosition.x), Math.abs(y - this.playerPosition.y), '容錯:', tolerance, '可抓取:', isOnPlayer);
       
       if (!isOnPlayer) return;
       
@@ -227,17 +272,23 @@ export default {
       if (this.gameState !== 'playing') return;
       
       const touch = e.touches[0];
-      // 檢查是否點擊在玩家元件上
+      // 使用SVG的getScreenCTM方法來獲取更精確的座標轉換
       const rect = this.gameArea.getBoundingClientRect();
-      const relativeX = (touch.clientX - rect.left) / rect.width;
-      const relativeY = (touch.clientY - rect.top) / rect.height;
+      const svgRect = this.svgElement.getBoundingClientRect();
+      
+      // 計算相對於SVG的位置
+      const relativeX = (touch.clientX - svgRect.left) / svgRect.width;
+      const relativeY = (touch.clientY - svgRect.top) / svgRect.height;
       const x = relativeX * 760;
       const y = relativeY * 1283;
       
-      // 檢查點擊位置是否在30x30的玩家元件範圍內（+ 20像素緩衝）
-      const tolerance = 35; // 30/2 + 20像素緩衝
+      // 使用更大的容錯範圍來確保可以抓取
+      const tolerance = 80; // 進一步增加容錯範圍
+      
       const isOnPlayer = Math.abs(x - this.playerPosition.x) <= tolerance && 
                         Math.abs(y - this.playerPosition.y) <= tolerance;
+      
+      console.log('觸摸:', x, y, '玩家:', this.playerPosition.x, this.playerPosition.y, '距離:', Math.abs(x - this.playerPosition.x), Math.abs(y - this.playerPosition.y), '容錯:', tolerance, '可抓取:', isOnPlayer);
       
       if (!isOnPlayer) return;
       
@@ -248,18 +299,41 @@ export default {
     handleMove(e) {
       if (!this.isMouseDown || this.gameState !== 'playing') return;
       e.preventDefault();
-      this.updatePlayerPosition(e);
+      this.schedulePositionUpdate(e);
     },
     
     handleTouchMove(e) {
       if (!this.isMouseDown || this.gameState !== 'playing') return;
       e.preventDefault();
       const touch = e.touches[0];
-      this.updatePlayerPosition(touch);
+      this.schedulePositionUpdate(touch);
     },
     
     handleEnd() {
       this.isMouseDown = false;
+      if (this.animationFrameId) {
+        cancelAnimationFrame(this.animationFrameId);
+        this.animationFrameId = null;
+      }
+      this.pendingPosition = null;
+    },
+    
+    schedulePositionUpdate(e) {
+      // 保存当前位置信息
+      this.pendingPosition = e;
+      
+      // 如果已经有待处理的动画帧，取消它
+      if (this.animationFrameId) {
+        cancelAnimationFrame(this.animationFrameId);
+      }
+      
+      // 使用 requestAnimationFrame 来优化性能
+      this.animationFrameId = requestAnimationFrame(() => {
+        if (this.pendingPosition) {
+          this.updatePlayerPosition(this.pendingPosition);
+          this.animationFrameId = null;
+        }
+      });
     },
     
     updatePlayerPosition(e) {
@@ -277,24 +351,25 @@ export default {
       const clampedX = Math.max(0, Math.min(760, x));
       const clampedY = Math.max(0, Math.min(1283, y));
       
-      // 檢查是否碰到路徑
+      // 先檢查碰撞，如果碰撞則立即停止拖動
       if (this.checkCollision(clampedX, clampedY)) {
-        this.gameOver();
+        this.handleCollision();
         return;
       }
       
-      // 檢查是否到達終點
+      // 檢查勝利條件
       if (this.checkWinCondition(clampedX, clampedY)) {
         this.winGame();
         return;
       }
       
+      // 只有在沒有碰撞和勝利的情況下才更新位置
       this.playerPosition = { x: clampedX, y: clampedY };
     },
     
     checkCollision(x, y) {
-      // 合理的碰撞檢測 - 檢查黃色區塊是否碰到路徑
-      const blockSize = 30; // 黃色區塊大小
+      // 合理的碰撞檢測 - 檢查草莓糖果是否碰到路徑
+      const blockSize = 50; // 草莓糖果大小
       const pathWidth = 15; // 路徑寬度
       const tolerance = (blockSize / 2) + (pathWidth / 2) + 5; // 區塊半徑 + 路徑半寬 + 5px緩衝
       
@@ -331,6 +406,27 @@ export default {
              y <= (endY + rectHeight/2);
     },
     
+    handleCollision() {
+      // 立即停止拖動
+      this.isMouseDown = false;
+      if (this.animationFrameId) {
+        cancelAnimationFrame(this.animationFrameId);
+        this.animationFrameId = null;
+      }
+      this.pendingPosition = null;
+      
+      // 播放碰撞音效
+      this.playSound(this.collisionAudio);
+      
+      // 延遲顯示失敗彈窗並播放失敗音效
+      setTimeout(() => {
+        this.gameOver();
+      }, 1000);
+      setTimeout(() => {
+        this.playSound(this.failAudio);
+      }, 1500); // 300ms 延遲，讓碰撞音效先播放
+    },
+    
     gameOver() {
       this.gameState = 'gameOver';
       this.isShaking = true;
@@ -359,6 +455,9 @@ export default {
       if (this.scoreInterval) {
         clearInterval(this.scoreInterval);
       }
+      
+      // 播放成功音效
+      this.playSound(this.successAudio);
       
       // 勝利獎勵分數
       this.score += 100;
