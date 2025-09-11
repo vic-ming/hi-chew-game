@@ -118,6 +118,7 @@
 <script>
 import candyStrawberry from '../assets/candy_strawberry.png'
 import lightningImage from '../assets/lightning.png'
+import bgmSound from '../assets/mp3/bgm.mp3'
 import successSound from '../assets/mp3/success.mp3'
 import collisionSound from '../assets/mp3/collision.mp3'
 import failSound from '../assets/mp3/fail.mp3'
@@ -141,6 +142,7 @@ export default {
       lightningImage: lightningImage,
       // 音效相關
       audioContext: null,
+      bgmAudio: null,
       successAudio: null,
       collisionAudio: null,
       failAudio: null,
@@ -173,6 +175,11 @@ export default {
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
     }
+    // 停止BGM
+    if (this.bgmAudio) {
+      this.bgmAudio.pause();
+      this.bgmAudio.currentTime = 0;
+    }
   },
   methods: {
     setupEventListeners() {
@@ -187,6 +194,10 @@ export default {
       this.gameArea.addEventListener('touchmove', this.handleTouchMove, { passive: false });
       this.gameArea.addEventListener('touchend', this.handleEnd, { passive: false });
       
+      // BGM 觸發事件
+      this.gameArea.addEventListener('mousemove', this.enableBGM, { passive: true });
+      this.gameArea.addEventListener('touchmove', this.enableBGM, { passive: true });
+      
       // 防止右鍵選單
       this.gameArea.addEventListener('contextmenu', (e) => e.preventDefault());
     },
@@ -199,6 +210,9 @@ export default {
       this.gameArea.removeEventListener('touchstart', this.handleTouchStart);
       this.gameArea.removeEventListener('touchmove', this.handleTouchMove);
       this.gameArea.removeEventListener('touchend', this.handleEnd);
+      // 清理 BGM 觸發事件
+      this.gameArea.removeEventListener('mousemove', this.enableBGM);
+      this.gameArea.removeEventListener('touchmove', this.enableBGM);
     },
     
     initializePaths() {
@@ -209,18 +223,62 @@ export default {
     initializeAudio() {
       // 初始化音效
       try {
+        this.bgmAudio = new Audio(bgmSound);
         this.successAudio = new Audio(successSound);
         this.collisionAudio = new Audio(collisionSound);
         this.failAudio = new Audio(failSound);
+        
+        // 設置BGM屬性
+        this.bgmAudio.loop = true;
+        this.bgmAudio.volume = 0.3; // BGM音量較低
         
         // 設置音效屬性
         [this.successAudio, this.collisionAudio, this.failAudio].forEach(audio => {
           audio.preload = 'auto';
           audio.volume = 0.7; // 設置音量
         });
+        
+        // 嘗試播放BGM
+        this.playBGM();
       } catch (error) {
         console.warn('音效初始化失敗:', error);
       }
+    },
+    
+    enableBGM() {
+      if (this.bgmAudio && this.bgmAudio.paused) {
+        this.bgmAudio.play().catch(() => {});
+      }
+    },
+    
+    playBGM() {
+      if (this.bgmAudio) {
+        try {
+          this.bgmAudio.play().then(() => {
+            console.log('Game BGM 播放成功');
+          }).catch(error => {
+            console.warn('Game BGM 播放失敗:', error);
+            // 如果自動播放失敗，在用戶第一次交互時重試
+            this.retryBGMOnInteraction();
+          });
+        } catch (error) {
+          console.warn('Game BGM 播放錯誤:', error);
+        }
+      }
+    },
+    
+    retryBGMOnInteraction() {
+      // 在用戶第一次交互時重試播放BGM
+      const enableBGM = () => {
+        if (this.bgmAudio && this.bgmAudio.paused) {
+          this.bgmAudio.play().catch(() => {});
+        }
+      };
+      
+      // 監聽所有可能的交互事件
+      this.gameArea.addEventListener('click', enableBGM, { once: true });
+      this.gameArea.addEventListener('touchstart', enableBGM, { once: true });
+      this.gameArea.addEventListener('mousedown', enableBGM, { once: true });
     },
     
     playSound(audio) {
@@ -265,15 +323,11 @@ export default {
     handleStart(e) {
       if (this.gameState !== 'playing') return;
       
-      // 使用SVG的getScreenCTM方法來獲取更精確的座標轉換
-      const rect = this.gameArea.getBoundingClientRect();
-      const svgRect = this.svgElement.getBoundingClientRect();
+      // 任何交互都觸發BGM
+      this.enableBGM();
       
-      // 計算相對於SVG的位置
-      const relativeX = (e.clientX - svgRect.left) / svgRect.width;
-      const relativeY = (e.clientY - svgRect.top) / svgRect.height;
-      const x = relativeX * 760;
-      const y = relativeY * 1283;
+      // 使用統一的座標轉換方法
+      const { x, y } = this.convertToSVGCoordinates(e);
       
       // 使用更大的容錯範圍來確保可以抓取
       const tolerance = 100; // 進一步增加容錯範圍
@@ -311,15 +365,8 @@ export default {
       if (this.gameState !== 'playing') return;
       
       const touch = e.touches[0];
-      // 使用SVG的getScreenCTM方法來獲取更精確的座標轉換
-      const rect = this.gameArea.getBoundingClientRect();
-      const svgRect = this.svgElement.getBoundingClientRect();
-      
-      // 計算相對於SVG的位置
-      const relativeX = (touch.clientX - svgRect.left) / svgRect.width;
-      const relativeY = (touch.clientY - svgRect.top) / svgRect.height;
-      const x = relativeX * 760;
-      const y = relativeY * 1283;
+      // 使用統一的座標轉換方法
+      const { x, y } = this.convertToSVGCoordinates(touch);
       
       // 使用更大的容錯範圍來確保可以抓取
       const tolerance = 100; // 進一步增加容錯範圍
@@ -374,26 +421,41 @@ export default {
       this.pendingPosition = null;
     },
     
-    
-    updatePlayerPosition(e) {
-      // 性能優化：緩存矩形值，減少DOM查詢
-      if (!this.cachedRect || Date.now() - this.lastMoveTime > 100) {
-        this.cachedRect = {
-          gameArea: this.gameArea.getBoundingClientRect(),
-          svg: this.svgElement.getBoundingClientRect()
-        };
-        this.lastMoveTime = Date.now();
-      }
+    // 統一的座標轉換方法
+    convertToSVGCoordinates(e) {
+      const svgRect = this.svgElement.getBoundingClientRect();
       
-      const svgRect = this.cachedRect.svg;
+      console.log('=== 座標轉換調試 ===');
+      console.log('滑鼠位置:', e.clientX, e.clientY);
+      console.log('SVG位置:', svgRect.left, svgRect.top);
+      console.log('SVG大小:', svgRect.width, svgRect.height);
       
       // 計算相對於SVG的位置
       const relativeX = (e.clientX - svgRect.left) / svgRect.width;
       const relativeY = (e.clientY - svgRect.top) / svgRect.height;
       
-      // 轉換為 SVG 座標系統
-      const x = relativeX * 760;
-      const y = relativeY * 1283;
+      console.log('相對位置:', relativeX, relativeY);
+      
+      // 轉換為 SVG 座標系統 (viewBox="0 0 760 1283")
+      // 使用更精確的計算，考慮SVG的實際縮放比例
+      const scaleX = 760 / svgRect.width;
+      const scaleY = 1283 / svgRect.height;
+      
+      const x = (e.clientX - svgRect.left) * scaleX;
+      const y = (e.clientY - svgRect.top) * scaleY;
+      
+      console.log('縮放比例:', scaleX, scaleY);
+      console.log('SVG座標:', x, y);
+      console.log('玩家位置:', this.playerPosition.x, this.playerPosition.y);
+      console.log('距離:', Math.abs(x - this.playerPosition.x), Math.abs(y - this.playerPosition.y));
+      console.log('==================');
+      
+      return { x, y };
+    },
+    
+    updatePlayerPosition(e) {
+      // 使用統一的座標轉換方法
+      const { x, y } = this.convertToSVGCoordinates(e);
       
       // 限制在 SVG 範圍內
       const clampedX = Math.max(0, Math.min(760, x));
