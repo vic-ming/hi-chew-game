@@ -1,13 +1,13 @@
 <template>
   <div class="home">
     <div class="home-container" v-if="step === 1">
-        <img src="@/assets/pc-1.jpg" alt="" class="pc-img" @click="startGame">
+        <img src="@/assets/pc-1.png" alt="" class="pc-img" @click="startGame">
         <img src="@/assets/mb-1.png" alt="" class="mb-img" @click="startGame">
     </div>
     
     <!-- 遊戲說明彈窗 -->
     <div class="home-container"  v-if="step === 2">
-        <img src="@/assets/pc-2.jpg" alt="" class="pc-img" @click="router.push('/game')">
+        <img src="@/assets/pc-2.png" alt="" class="pc-img" @click="router.push('/game')">
         <img src="@/assets/mb-2.png" alt="" class="mb-img" @click="router.push('/game')">
     </div>
   </div>
@@ -40,8 +40,12 @@ export default {
 <style scoped>
 .home {
   width: 100vw;
-  height: 100%;
+  height: 100vh;
   overflow: auto;
+  background-image: url('../assets/pc-bg.svg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .home-container {

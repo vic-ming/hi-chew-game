@@ -54,6 +54,17 @@
             :class="{ 'shaking': isShaking, 'dragging': isMouseDown }"
           />
           
+          <!-- 閃電效果 -->
+          <image 
+            v-if="showLightning"
+            :x="lightningPosition.x - 60" 
+            :y="lightningPosition.y - 60" 
+            width="120"
+            height="120"
+            :href="lightningImage"
+            class="lightning-effect"
+          />
+          
           <!-- 調試用：顯示碰撞檢測範圍 -->
           <circle 
             v-if="gameState === 'playing'"
@@ -106,6 +117,7 @@
 
 <script>
 import candyStrawberry from '../assets/candy_strawberry.png'
+import lightningImage from '../assets/lightning.png'
 import successSound from '../assets/mp3/success.mp3'
 import collisionSound from '../assets/mp3/collision.mp3'
 import failSound from '../assets/mp3/fail.mp3'
@@ -126,6 +138,7 @@ export default {
       gameStartTime: null,
       scoreInterval: null,
       candyImage: candyStrawberry,
+      lightningImage: lightningImage,
       // 音效相關
       audioContext: null,
       successAudio: null,
@@ -133,7 +146,10 @@ export default {
       failAudio: null,
       // 拖動優化
       animationFrameId: null,
-      pendingPosition: null
+      pendingPosition: null,
+      // 閃電效果
+      showLightning: false,
+      lightningPosition: { x: 0, y: 0 }
     }
   },
   mounted() {
@@ -221,6 +237,7 @@ export default {
       this.score = 0;
       this.playerPosition = { x: 143, y: 70 };
       this.gameStartTime = Date.now();
+      this.showLightning = false; // 重置閃電效果
       
       // 開始計分
       this.scoreInterval = setInterval(() => {
@@ -234,6 +251,7 @@ export default {
       this.gameState = 'playing';
       this.playerPosition = { x: 143, y: 70 };
       this.isShaking = false;
+      this.showLightning = false; // 重置閃電效果
       if (this.scoreInterval) {
         clearInterval(this.scoreInterval);
       }
@@ -299,14 +317,14 @@ export default {
     handleMove(e) {
       if (!this.isMouseDown || this.gameState !== 'playing') return;
       e.preventDefault();
-      this.schedulePositionUpdate(e);
+      this.updatePlayerPosition(e);
     },
     
     handleTouchMove(e) {
       if (!this.isMouseDown || this.gameState !== 'playing') return;
       e.preventDefault();
       const touch = e.touches[0];
-      this.schedulePositionUpdate(touch);
+      this.updatePlayerPosition(touch);
     },
     
     handleEnd() {
@@ -318,30 +336,15 @@ export default {
       this.pendingPosition = null;
     },
     
-    schedulePositionUpdate(e) {
-      // 保存当前位置信息
-      this.pendingPosition = e;
-      
-      // 如果已经有待处理的动画帧，取消它
-      if (this.animationFrameId) {
-        cancelAnimationFrame(this.animationFrameId);
-      }
-      
-      // 使用 requestAnimationFrame 来优化性能
-      this.animationFrameId = requestAnimationFrame(() => {
-        if (this.pendingPosition) {
-          this.updatePlayerPosition(this.pendingPosition);
-          this.animationFrameId = null;
-        }
-      });
-    },
     
     updatePlayerPosition(e) {
+      // 使用與抓取檢測相同的座標轉換方法
       const rect = this.gameArea.getBoundingClientRect();
+      const svgRect = this.svgElement.getBoundingClientRect();
       
-      // 計算相對於遊戲區域的百分比
-      const relativeX = (e.clientX - rect.left) / rect.width;
-      const relativeY = (e.clientY - rect.top) / rect.height;
+      // 計算相對於SVG的位置
+      const relativeX = (e.clientX - svgRect.left) / svgRect.width;
+      const relativeY = (e.clientY - svgRect.top) / svgRect.height;
       
       // 轉換為 SVG 座標系統
       const x = relativeX * 760;
@@ -415,8 +418,14 @@ export default {
       }
       this.pendingPosition = null;
       
+      // 設置閃電效果位置
+      this.lightningPosition = { x: this.playerPosition.x, y: this.playerPosition.y };
+      this.showLightning = true;
+      
       // 播放碰撞音效
       this.playSound(this.collisionAudio);
+      
+      // 閃電效果保持顯示，不再隱藏
       
       // 延遲顯示失敗彈窗並播放失敗音效
       setTimeout(() => {
@@ -547,6 +556,31 @@ export default {
 .debug-circle {
   pointer-events: none;
   opacity: 0.5;
+}
+
+.lightning-effect {
+  pointer-events: none;
+  animation: lightning-flash 0.8s ease-out;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 0, 0.8));
+}
+
+@keyframes lightning-flash {
+  0% {
+    opacity: 0;
+    /* transform: scale(0.5); */
+  }
+  20% {
+    opacity: 1;
+    /* transform: scale(1); */
+  }
+  40% {
+    opacity: 0.8;
+    /* transform: scale(0.5); */
+  }
+  100% {
+    opacity: 1;
+    /* transform: scale(1); */
+  }
 }
 
 .end-zone {
