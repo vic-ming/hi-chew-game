@@ -1,16 +1,59 @@
 <template>
   <div class="home" @click="enableBGM" @mousemove="enableBGM">
+    <!-- 遊戲說明 -->
     <div class="home-container" v-if="step === 1">
-        <img src="@/assets/pc-1.png" alt="" class="pc-img" @click="startGame">
-        <img src="@/assets/mb-1.png" alt="" class="mb-img" @click="startGame">
+      <div class="pc-view">
+        <div class="relative">
+          <img src="@/assets/images/pc-step-1.png" alt="" >
+          <div class="pc-next-btn-1" @click="stepNext"></div>
+        </div>
+      </div>
+      <div class="mb-view">
+        <div class="relative">
+          <img src="@/assets/images/mb-step-1.png" alt="">
+          <div class="mb-next-btn-1" @click="stepNext"></div>
+        </div>
+      </div>
     </div>
-    
-    <!-- 遊戲說明彈窗 -->
+
+      
+    <!-- 選擇嗨啾 -->
     <div class="home-container"  v-if="step === 2">
-        <img src="@/assets/pc-2.png" alt="" class="pc-img" @click="goToGame">
-        <img src="@/assets/mb-2.png" alt="" class="mb-img" @click="goToGame">
+      <div class="pc-view">
+        <div class="relative">
+          <img src="@/assets/images/pc-step-3.png" alt="">
+          <div class="pc-next-btn-3-1" @click="stepNext(1)"></div>
+          <div class="pc-next-btn-3-2" @click="stepNext(2)"></div>
+        </div>
+      </div>
+      <div class="mb-view">
+        <div class="relative">
+          <img src="@/assets/images/mb-step-3.png" alt="">
+          <div class="mb-next-btn-3-1" @click="stepNext(1)"></div>
+          <div class="mb-next-btn-3-2" @click="stepNext(2)"></div>
+        </div>
+      </div>
     </div>
-    
+
+    <!-- 選擇關卡 -->
+    <div class="home-container" v-if="step === 3">
+      <div class="pc-view">
+        <div class="relative">
+          <img src="@/assets/images/pc-step-2.png" alt="">
+          <div class="pc-next-btn-2-1" @click="startGame('a')"></div>
+          <div class="pc-next-btn-2-2" @click="startGame('b')"></div>
+        </div>
+      </div>
+      <div class="mb-view">
+        <div class="relative">  
+          <img src="@/assets/images/mb-step-2.png" alt="">
+          <div class="mb-next-btn-2-1" @click="startGame('a')"></div>
+          <div class="mb-next-btn-2-2" @click="startGame('b')"></div>
+        </div>
+      </div>
+    </div>
+  
+
   </div>
 </template>
 
@@ -30,7 +73,9 @@ export default {
     return {
         step: 1,
         bgmAudio: null,
-        bgmStarted: false
+        bgmStarted: false,
+        selectedLevel: null,
+        selectedCandy: null
     }
   },
   mounted() {
@@ -82,14 +127,22 @@ export default {
       }
     },
     
-    startGame() {
+    startGame(_value) {
+      this.selectedLevel = _value
       this.enableBGM() // 任何交互都觸發BGM
-      this.step = 2
+      this.router.push({
+        path: '/game',
+        query: {
+          candy: this.selectedCandy,
+          level: this.selectedLevel
+        }
+      })
     },
     
-    goToGame() {
+    stepNext(_value) {
       this.enableBGM() // 任何交互都觸發BGM
-      this.router.push('/game')
+      this.selectedCandy = _value
+      this.step++
     }
   }
 }
@@ -97,12 +150,12 @@ export default {
 
 <style scoped>
 .home {
-  width: 100vw;
-  height: 100vh;
+  width: calc(100vw + 10px);
+  height: calc(100vh + 10px);
   overflow: auto;
-  background-image: url('../assets/pc-bg.svg');
+  background-image: url('../assets/images/pc-bg.svg');
   background-size: cover;
-  background-position: center;
+  background-position: -5px -5px;
   background-repeat: no-repeat;
 }
 
@@ -122,8 +175,105 @@ export default {
   cursor: pointer;
 }
 
-.mb-img{
-    display: none;
+.relative{
+  position: relative;
+}
+
+.pc-next-btn-1{
+  position: absolute;
+  width: 24vw;
+  height: 11vw;
+  bottom: 2vw;
+  left: calc(50% - 12vw);
+  cursor: pointer;
+}
+.pc-next-btn-2-1{
+  position: absolute;
+  width: 22vw;
+  height: 48vw;
+  top: 5vw;
+  left: calc(16% - 10vw);
+  cursor: pointer;
+  rotate: 170deg;
+}
+.pc-next-btn-2-2{
+  position: absolute;
+  width: 22vw;
+  height: 48vw;
+  top: 5vw;
+  right: calc(16% - 10vw);
+  cursor: pointer;
+  rotate: 10deg;
+}
+.pc-next-btn-3-1{
+  position: absolute;
+  width: 17vw;
+  height: 10vw;
+  top: 11vw;
+  right: calc(35% - 8vw);
+  cursor: pointer;
+  rotate: 19deg;
+}
+.pc-next-btn-3-2{
+  position: absolute;
+  width: 17vw;
+  height: 10vw;
+  top: 11vw;
+  right: calc(14.5% - 8vw);
+  cursor: pointer;
+  rotate: 19deg;
+}
+
+.mb-next-btn-1{
+  position: absolute;
+  width: 67%;
+  height: 13%;
+  bottom: 8%;
+  left: 16%;
+  cursor: pointer;
+  
+}
+.mb-next-btn-3-1{
+  position: absolute;
+  width: 38%;
+  height: 9%;
+  bottom: 34%;
+  left: 9%;
+  cursor: pointer;
+  rotate: 19deg;
+}
+.mb-next-btn-3-2{
+  position: absolute;
+  width: 38%;
+  height: 9%;
+  bottom: 34%;
+  right: 8%;
+  cursor: pointer;
+  rotate: 19deg;
+}
+.mb-next-btn-2-1{
+  position: absolute;
+  width: 44%;
+  height: 43%;
+  bottom: 32%;
+  left: 11%;
+  cursor: pointer;
+  rotate: -11deg; 
+  z-index: 1;
+}
+.mb-next-btn-2-2{
+  position: absolute;
+  width: 44%;
+  height: 43%;
+  bottom: 4%;
+  right: 12.5%;
+  cursor: pointer;
+  rotate: 11deg; 
+}
+
+
+.mb-view{
+  display: none;
 }
 
 .bgm-prompt {
@@ -166,10 +316,10 @@ export default {
     .home-container{
      display: block;
     }
-    .pc-img{
+    .pc-view{
         display: none;
     }
-    .mb-img{
+    .mb-view{
         display: block;
     }
     

@@ -3,40 +3,34 @@
     <div class="game-container">
       <!-- 遊戲區域 -->
       <div class="game-area" ref="gameArea">
-        <img src="@/assets/challenge.png" alt="challenge" class="challenge-img absolute-img">
+        <!-- <img src="@/assets/challenge.png" alt="challenge" class="challenge-img absolute-img">
         <img src="@/assets/head.png" alt="head" class="head-img absolute-img">
         <img src="@/assets/strawberry.png" alt="strawberry" class="strawberry-img absolute-img">
         <img src="@/assets/grape1.png" alt="grape" class="grape1-img absolute-img">
         <img src="@/assets/grape2.png" alt="grape" class="grape2-img absolute-img">
-        <img src="@/assets/star.png" alt="star" class="star-img absolute-img">
+        <img src="@/assets/star.png" alt="star" class="star-img absolute-img"> -->
 
         <!-- SVG 路徑 -->
-        <svg class="line-svg" viewBox="0 0 760 1283" ref="svgElement">
-          <!-- 路徑1 -->
+        <svg class="line-svg" :viewBox="levelConfig.viewBox" ref="svgElement">
+          <!-- 動態路徑，根據關卡顯示不同路徑 -->
           <path 
-            d="M143 8H544.5C561.069 8 574.5 21.4315 574.5 38V319C574.5 335.569 561.069 349 544.5 349H325C308.431 349 295 362.431 295 379V384.5C295 401.069 308.431 414.5 325 414.5H722C738.569 414.5 752 427.931 752 444.5V633C752 649.569 738.569 663 722 663H229.75C181.839 663 143 701.839 143 749.75V749.75C143 797.661 181.839 836.5 229.75 836.5H611C627.569 836.5 641 849.931 641 866.5V1170.5C641 1187.07 627.569 1200.5 611 1200.5H238.5C221.931 1200.5 208.5 1213.93 208.5 1230.5V1275.5" 
-            stroke="#999" 
-            stroke-width="15" 
+            v-for="(path, index) in levelConfig.paths"
+            :key="index"
+            :d="path.d"
+            stroke="#bfbfbf" 
+            stroke-width="10" 
             stroke-linecap="round"
+            stroke-linejoin="round"
             fill="none"
-            class="path-1"
-          />
-          <!-- 路徑2 -->
-          <path 
-            d="M149 135H423C439.569 135 453 148.431 453 165V197.5C453 214.069 439.569 227.5 423 227.5H193C176.431 227.5 163 240.931 163 257.5V502C163 518.569 176.431 532 193 532H619C624.799 532 629.5 536.701 629.5 542.5V542.5C629.5 548.299 624.799 553 619 553H208C97.543 553 8 643.043 8 753.5V753.5C8 863.957 97.5431 954 208 954H471.5C488.069 954 501.5 967.431 501.5 984V1024C501.5 1040.57 488.069 1054 471.5 1054H73C56.4315 1054 43 1067.43 43 1084V1271" 
-            stroke="#999" 
-            stroke-width="15" 
-            stroke-linecap="round"
-            fill="none"
-            class="path-2"
+            :class="path.class"
           />
           
           <!-- 終點區域 -->
           <rect 
-            x="100" 
-            y="1240" 
-            width="60" 
-            height="60" 
+            :x="levelConfig.endZone.x" 
+            :y="levelConfig.endZone.y" 
+            :width="levelConfig.endZone.width" 
+            :height="levelConfig.endZone.height" 
             fill="rgba(255,107,107,0.3)" 
             stroke="#ff6b6b" 
             stroke-width="4"
@@ -79,19 +73,6 @@
         </svg>
       </div>
 
-      <!-- 遊戲控制 -->
-      <div class="game-controls">
-        <button 
-          v-if="gameState === 'gameOver'" 
-          @click="restartGame" 
-          class="restart-btn"
-        >
-          重新開始
-        </button>
-        <div v-if="gameState === 'playing'" class="instructions">
-          拖動草莓糖果從起點到終點，不要碰到路徑！
-        </div>
-      </div>
 
       <!-- 遊戲結束畫面 -->
       <div v-if="gameState === 'gameOver'" class="game-over">
@@ -117,6 +98,7 @@
 
 <script>
 import candyStrawberry from '../assets/candy_strawberry.png'
+import candyGrape from '../assets/candy_grape.png'
 import lightningImage from '../assets/lightning.png'
 import bgmSound from '../assets/mp3/bgm.mp3'
 import successSound from '../assets/mp3/success.mp3'
@@ -130,7 +112,7 @@ export default {
       gameState: 'playing', // ready, playing, gameOver, completed
       score: 0,
       bestScore: parseInt(localStorage.getItem('bestScore')) || 0,
-      playerPosition: { x: 113, y: 70 }, // 起點位置
+      playerPosition: { x: 312, y: 80 }, // 起點位置 (將在mounted時根據關卡更新)
       isShaking: false,
       gameArea: null,
       svgElement: null,
@@ -140,12 +122,16 @@ export default {
       scoreInterval: null,
       candyImage: candyStrawberry,
       lightningImage: lightningImage,
+      // 從路由參數獲取的值
+      selectedCandy: null,
+      selectedLevel: null,
       // 音效相關
       audioContext: null,
       bgmAudio: null,
       successAudio: null,
       collisionAudio: null,
       failAudio: null,
+      bgmInitialized: false, // 防止BGM重複初始化
       // 拖動優化
       animationFrameId: null,
       pendingPosition: null,
@@ -158,13 +144,80 @@ export default {
       lastCollisionCheck: 0
     }
   },
+  computed: {
+    // 根據關卡返回對應的SVG配置
+    levelConfig() {
+      if (this.selectedLevel === 'b') {
+        return {
+          viewBox: "0 0 1216 1772",
+          paths: [
+            {
+              d: "M526.55-.45h372.66c.3,0,.6,0,.89,0,83.76.82,151.65,69.22,151.65,153.17v379.09c0,84.47-68.72,153.18-153.18,153.18s-153.18-68.72-153.18-153.18c0-2.78.22-5.5.64-8.16v-172.9c-.42-2.66-.64-5.38-.64-8.16,0-27.68-22.52-50.2-50.2-50.2s-50.2,22.52-50.2,50.2c0,2.77-.22,5.5-.64,8.16v181.07c0,3.41-.33,6.74-.96,9.97-5.16,79.83-71.75,143.21-152.86,143.21s-147.71-63.38-152.86-143.21c-.63-3.23-.96-6.56-.96-9.97v-181.07c-.42-2.66-.64-5.38-.64-8.16,0-27.68-22.52-50.2-50.2-50.2s-50.2,22.52-50.2,50.2c0,2.77-.22,5.5-.64,8.16v387.26c.42,2.66.64,5.38.64,8.13,0,27.68,22.52,50.2,50.2,50.2h706.29c2.66-.42,5.38-.64,8.13-.64",
+              class: "path-1"
+            },
+            {
+              d: "M1006.29,899.05c-1.78.19-3.58.28-5.4.28H285.19c-.3,0-.6,0-.89,0-80.11-.79-145.7-63.39-151.26-142.29-.68-3.33-1.03-6.76-1.03-10.24v-413.21c0-5.91,1-11.59,2.83-16.88,12.34-72.18,75.35-127.29,150.99-127.29s138.66,55.11,150.99,127.29c1.84,5.29,2.83,10.97,2.83,16.88v190.07c.42,2.66.64,5.38.64,8.16,0,27.68,22.52,50.2,50.2,50.2s50.2-22.52,50.2-50.2c0-2.78.22-5.5.64-8.16v-190.07c0-5.91,1-11.59,2.83-16.88,12.34-72.18,75.35-127.29,150.99-127.29s138.66,55.11,150.99,127.29c1.84,5.29,2.83,10.97,2.83,16.88v198.24c0,1.94-.11,3.86-.32,5.74,2.86,24.99,24.14,44.46,49.88,44.46,27.68,0,50.2-22.52,50.2-50.2V152.73c0-27.68-22.52-50.2-50.2-50.2h-372.01",
+              class: "path-2"
+            },
+            {
+              d: "M486.1,897.87c.29,0,.59,0,.88,0h515.05c61.85,0,112.16,50.32,112.16,112.16s-50.32,112.16-112.16,112.16c0,0-323.09,0-437.67,0l-2.85-3.17c-55.42-80.82-148.43-133.84-253.83-133.84-169.86,0-307.55,137.7-307.55,307.55s137.7,307.55,307.55,307.55c90.52,0,171.91-39.11,228.19-101.35l9.59-5.54c90.77,0,344.41,0,344.41,0,29.14,0,52.84,23.7,52.84,52.84,0,29.14-23.7,52.84-52.84,52.84-2.88,0-5.74.23-8.54.68h-290.2c-29.93,0-54.19,24.26-54.19,54.19v118.49",
+              class: "path-3"
+            },
+            {
+              d: "M645.32,1772.45v-64.29s243.88,0,243.88,0c3.41,0,6.79-.32,10.1-.95,84.53-4.9,151.8-75.22,151.8-160.96,0-88.9-72.33-161.23-161.23-161.23,0,0-315.45,0-397.25,0l-10.95,3.33c-33.77,61.33-99.03,102.88-173.99,102.88-109.62,0-198.49-88.87-198.49-198.49s88.87-198.49,198.49-198.49c82.79,0,153.74,50.68,183.51,122.71l7.44,6.9c142.63,0,503.4,0,503.4,0,117.91,0,213.84-95.93,213.84-213.84,0-117.91-95.93-213.84-213.84-213.84H487.62",
+              class: "path-4"
+            }
+          ],
+          startPosition: { x: 526, y: 50 },
+          endZone: { x: 565, y: 1708, width: 60, height: 60 },
+          svgWidth: 1216,
+          svgHeight: 1772
+        }
+      } else {
+        // 默認關卡 A
+        return {
+          viewBox: "0 0 1156 1846.25",
+          paths: [
+            {
+              d: "M312.52,29.94h512.47c.29,0,.59,0,.88,0,82.27.81,148.94,67.99,148.94,150.45s-66.67,149.64-148.94,150.45c-.29,0-.58,0-.88,0H312.95c-32.42,0-58.79,26.37-58.79,58.79s26.37,58.79,58.79,58.79h512.05c.29,0,.59,0,.88,0,82.27.81,148.94,67.99,148.94,150.45s-66.67,149.64-148.94,150.45c-.29,0-.58,0-.88,0H312.63c-61.52,0-111.58,50.05-111.58,111.58s50.05,111.58,111.58,111.58h217.51l8.37-7.03c60.96-88.9,163.28-147.22,279.22-147.22,186.85,0,338.31,151.47,338.31,338.31s-151.47,338.31-338.31,338.31c-99.58,0-189.1-43.02-251.01-111.49l-10.55-6.09H177.31c-32.05,0-58.12,26.07-58.12,58.12s26.07,58.12,58.12,58.12c3.17,0,6.31.25,9.4.75h319.23c32.92,0,59.61,26.69,59.61,59.61v277.15",
+              class: "path-1"
+            },
+            {
+              d: "M446.32,1831.06v-217.54H178.06c-3.76,0-7.47-.35-11.11-1.05C73.96,1607.09-.04,1529.73-.04,1435.42s79.56-177.35,177.35-177.35h436.98l12.05,3.66c37.15,67.46,108.93,113.17,191.39,113.17,120.59,0,218.34-97.75,218.34-218.34s-97.75-218.34-218.34-218.34c-91.07,0-169.11,55.75-201.86,134.99l-303.23.43c-117.29,0-212.72-95.43-212.72-212.72s95.43-212.72,212.72-212.72h511.73c27.19,0,49.31-22.12,49.31-49.31s-22.12-49.31-49.31-49.31h-511.41c-88.19,0-159.94-71.75-159.94-159.94s71.75-159.94,159.94-159.94h511.41c27.19,0,49.31-22.12,49.31-49.31s-22.12-49.31-49.31-49.31h-511.84",
+              class: "path-2"
+            }
+          ],
+          startPosition: { x: 312, y: 80 },
+          endZone: { x: 475, y: 1800, width: 60, height: 60 },
+          svgWidth: 1156,
+          svgHeight: 1846.25
+        }
+      }
+    }
+  },
+  created() {
+    // 從路由查詢參數獲取 candy 和 level 值
+    this.selectedCandy = this.$route.query.candy || '1';
+    this.selectedLevel = this.$route.query.level || 'a';
+    
+    // 根據選擇的糖果設置圖片
+    this.setCandyImage();
+
+  },
   mounted() {
     this.gameArea = this.$refs.gameArea;
     this.svgElement = this.$refs.svgElement;
     this.setupEventListeners();
     this.initializePaths();
     this.initializeAudio();
+    
+    // 根據關卡設置初始位置
+    this.playerPosition = { ...this.levelConfig.startPosition };
+    
     this.startGame();
+    
+    // 添加窗口大小變化監聽
+    window.addEventListener('resize', this.handleResize);
   },
   beforeUnmount() {
     this.removeEventListeners();
@@ -180,8 +233,23 @@ export default {
       this.bgmAudio.pause();
       this.bgmAudio.currentTime = 0;
     }
+    // 清理窗口大小變化監聽
+    window.removeEventListener('resize', this.handleResize);
   },
   methods: {
+    setCandyImage() {
+      // 根據選擇的糖果設置對應的圖片
+      if (this.selectedCandy === '1') {
+        this.candyImage = candyGrape;
+      } else if (this.selectedCandy === '2') {
+        this.candyImage = candyStrawberry;
+      } else {
+        // 默認使用草莓糖果
+        this.candyImage = candyStrawberry;
+      }
+    },
+  
+    
     setupEventListeners() {
       // 滑鼠事件 - 優化配置
       this.gameArea.addEventListener('mousedown', this.handleStart, { passive: false });
@@ -194,9 +262,7 @@ export default {
       this.gameArea.addEventListener('touchmove', this.handleTouchMove, { passive: false });
       this.gameArea.addEventListener('touchend', this.handleEnd, { passive: false });
       
-      // BGM 觸發事件
-      this.gameArea.addEventListener('mousemove', this.enableBGM, { passive: true });
-      this.gameArea.addEventListener('touchmove', this.enableBGM, { passive: true });
+      // BGM 已在遊戲開始時播放，不需要在移動時重複觸發
       
       // 防止右鍵選單
       this.gameArea.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -210,9 +276,6 @@ export default {
       this.gameArea.removeEventListener('touchstart', this.handleTouchStart);
       this.gameArea.removeEventListener('touchmove', this.handleTouchMove);
       this.gameArea.removeEventListener('touchend', this.handleEnd);
-      // 清理 BGM 觸發事件
-      this.gameArea.removeEventListener('mousemove', this.enableBGM);
-      this.gameArea.removeEventListener('touchmove', this.enableBGM);
     },
     
     initializePaths() {
@@ -238,6 +301,9 @@ export default {
           audio.volume = 0.7; // 設置音量
         });
         
+        // 標記BGM已初始化
+        this.bgmInitialized = true;
+        
         // 嘗試播放BGM
         this.playBGM();
       } catch (error) {
@@ -246,13 +312,19 @@ export default {
     },
     
     enableBGM() {
-      if (this.bgmAudio && this.bgmAudio.paused) {
+      if (this.bgmAudio && this.bgmAudio.paused && this.bgmInitialized) {
         this.bgmAudio.play().catch(() => {});
       }
     },
     
     playBGM() {
       if (this.bgmAudio) {
+        // 確保只有一個BGM實例在播放
+        if (!this.bgmAudio.paused) {
+          console.log('BGM 已經在播放中，跳過重複播放');
+          return;
+        }
+        
         try {
           this.bgmAudio.play().then(() => {
             console.log('Game BGM 播放成功');
@@ -270,12 +342,12 @@ export default {
     retryBGMOnInteraction() {
       // 在用戶第一次交互時重試播放BGM
       const enableBGM = () => {
-        if (this.bgmAudio && this.bgmAudio.paused) {
+        if (this.bgmAudio && this.bgmAudio.paused && this.bgmInitialized) {
           this.bgmAudio.play().catch(() => {});
         }
       };
       
-      // 監聽所有可能的交互事件
+      // 監聽所有可能的交互事件，使用 once: true 確保只觸發一次
       this.gameArea.addEventListener('click', enableBGM, { once: true });
       this.gameArea.addEventListener('touchstart', enableBGM, { once: true });
       this.gameArea.addEventListener('mousedown', enableBGM, { once: true });
@@ -297,9 +369,12 @@ export default {
     startGame() {
       this.gameState = 'playing';
       this.score = 0;
-      this.playerPosition = { x: 113, y: 70 };
+      this.playerPosition = { ...this.levelConfig.startPosition };
       this.gameStartTime = Date.now();
       this.showLightning = false; // 重置閃電效果
+      
+      // 根據關卡調整遊戲難度
+      this.adjustGameDifficulty();
       
       // 開始計分
       this.scoreInterval = setInterval(() => {
@@ -309,9 +384,33 @@ export default {
       }, 100);
     },
     
+    adjustGameDifficulty() {
+      // 根據關卡調整遊戲難度
+      // 根據遊戲區域大小動態調整參數
+      this.adjustGameParameters();
+    },
+    
+    adjustGameParameters() {
+      // 根據遊戲區域大小動態調整遊戲參數
+      const gameAreaWidth = this.gameArea ? this.gameArea.offsetWidth : 700;
+      const gameAreaHeight = this.gameArea ? this.gameArea.offsetHeight : window.innerHeight * 0.9;
+      
+      console.log('遊戲區域實際尺寸:', gameAreaWidth, 'x', gameAreaHeight);
+      
+      // 可以根據需要調整其他參數
+      // 例如：根據區域大小調整拖拽靈敏度等
+    },
+    
+    handleResize() {
+      // 處理窗口大小變化
+      if (this.gameArea) {
+        this.adjustGameParameters();
+      }
+    },
+    
     restartGame() {
       this.gameState = 'playing';
-      this.playerPosition = { x: 113, y: 70 };
+      this.playerPosition = { ...this.levelConfig.startPosition };
       this.isShaking = false;
       this.showLightning = false; // 重置閃電效果
       if (this.scoreInterval) {
@@ -323,14 +422,12 @@ export default {
     handleStart(e) {
       if (this.gameState !== 'playing') return;
       
-      // 任何交互都觸發BGM
-      this.enableBGM();
-      
       // 使用統一的座標轉換方法
       const { x, y } = this.convertToSVGCoordinates(e);
       
-      // 使用更大的容錯範圍來確保可以抓取
-      const tolerance = 100; // 進一步增加容錯範圍
+      // 根據遊戲區域大小動態調整容錯範圍
+      const baseTolerance = 80; // 基礎容錯範圍
+      const tolerance = baseTolerance; // 保持適中的容錯範圍
       
       const isOnPlayer = Math.abs(x - this.playerPosition.x) <= tolerance && 
                         Math.abs(y - this.playerPosition.y) <= tolerance;
@@ -344,7 +441,7 @@ export default {
       
       // 如果正常檢測失敗，嘗試更寬鬆的檢測
       if (!isOnPlayer) {
-        const looseTolerance = 150;
+        const looseTolerance = 120; // 適度調整寬鬆檢測範圍
         const isOnPlayerLoose = Math.abs(x - this.playerPosition.x) <= looseTolerance && 
                               Math.abs(y - this.playerPosition.y) <= looseTolerance;
         console.log('寬鬆檢測 (容錯:', looseTolerance, '):', isOnPlayerLoose);
@@ -383,7 +480,7 @@ export default {
       
       // 如果正常檢測失敗，嘗試更寬鬆的檢測
       if (!isOnPlayer) {
-        const looseTolerance = 150;
+        const looseTolerance = 120; // 適度調整寬鬆檢測範圍
         const isOnPlayerLoose = Math.abs(x - this.playerPosition.x) <= looseTolerance && 
                               Math.abs(y - this.playerPosition.y) <= looseTolerance;
         console.log('寬鬆檢測 (容錯:', looseTolerance, '):', isOnPlayerLoose);
@@ -429,6 +526,8 @@ export default {
       console.log('滑鼠位置:', e.clientX, e.clientY);
       console.log('SVG位置:', svgRect.left, svgRect.top);
       console.log('SVG大小:', svgRect.width, svgRect.height);
+      console.log('遊戲區域尺寸: 700px x 90vh');
+      console.log('SVG尺寸:', this.levelConfig.svgWidth, 'x', this.levelConfig.svgHeight);
       
       // 計算相對於SVG的位置
       const relativeX = (e.clientX - svgRect.left) / svgRect.width;
@@ -436,10 +535,10 @@ export default {
       
       console.log('相對位置:', relativeX, relativeY);
       
-      // 轉換為 SVG 座標系統 (viewBox="0 0 760 1283")
+      // 轉換為 SVG 座標系統，使用動態的SVG尺寸
       // 使用更精確的計算，考慮SVG的實際縮放比例
-      const scaleX = 760 / svgRect.width;
-      const scaleY = 1283 / svgRect.height;
+      const scaleX = this.levelConfig.svgWidth / svgRect.width;
+      const scaleY = this.levelConfig.svgHeight / svgRect.height;
       
       const x = (e.clientX - svgRect.left) * scaleX;
       const y = (e.clientY - svgRect.top) * scaleY;
@@ -458,15 +557,15 @@ export default {
       const { x, y } = this.convertToSVGCoordinates(e);
       
       // 限制在 SVG 範圍內
-      const clampedX = Math.max(0, Math.min(760, x));
-      const clampedY = Math.max(0, Math.min(1283, y));
+      const clampedX = Math.max(0, Math.min(this.levelConfig.svgWidth, x));
+      const clampedY = Math.max(0, Math.min(this.levelConfig.svgHeight, y));
       
       // 立即更新位置，提升響應性
       this.playerPosition = { x: clampedX, y: clampedY };
       
-      // 減少碰撞檢測頻率：每50ms檢測一次
+      // 減少碰撞檢測頻率：每30ms檢測一次，提高響應性
       const now = Date.now();
-      if (now - this.lastCollisionCheck > 50) {
+      if (now - this.lastCollisionCheck > 30) {
         this.lastCollisionCheck = now;
         
         // 檢查碰撞
@@ -484,14 +583,14 @@ export default {
     },
     
     checkCollision(x, y) {
-      // 碰撞檢測範圍與元件大小一致
+      // 碰撞檢測範圍與元件大小一致，根據遊戲區域調整精度
       const blockSize = 50; // 草莓糖果大小
-      const pathWidth = 15; // 路徑寬度
-      const tolerance = (blockSize / 2) + (pathWidth / 2); // 區塊半徑 + 路徑半寬，無額外緩衝
+      const pathWidth = 10; // 路徑寬度 (與SVG中的stroke-width一致)
+      const tolerance = (blockSize / 2) + (pathWidth / 2) + 5; // 區塊半徑 + 路徑半寬 + 小緩衝
       
       for (let path of this.pathElements) {
         const pathLength = path.getTotalLength();
-        const steps = Math.floor(pathLength / 20); // 適中的檢測密度
+        const steps = Math.floor(pathLength / 15); // 提高檢測密度以適應更大的遊戲區域
         
         for (let i = 0; i <= steps; i++) {
           const point = path.getPointAtLength((i / steps) * pathLength);
@@ -509,11 +608,11 @@ export default {
     },
     
     checkWinCondition(x, y) {
-      // 檢查是否到達終點矩形區域
-      const endX = 130; // 矩形中心 X
-      const endY = 1270; // 矩形中心 Y (對應 y=1240 + 30)
-      const rectWidth = 60;
-      const rectHeight = 60;
+      // 檢查是否到達終點矩形區域，使用動態的終點區域配置
+      const endX = this.levelConfig.endZone.x + this.levelConfig.endZone.width / 2;
+      const endY = this.levelConfig.endZone.y + this.levelConfig.endZone.height / 2;
+      const rectWidth = this.levelConfig.endZone.width;
+      const rectHeight = this.levelConfig.endZone.height;
       
       // 檢查點是否在矩形內
       return x >= (endX - rectWidth/2) && 
@@ -599,7 +698,7 @@ export default {
   width: 100vw;
   height: 100vh;
   background-image: url('../assets/background.jpg');
-  background-size: 100%;
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   touch-action: none; /* 防止手機上的滾動和縮放 */
@@ -623,8 +722,8 @@ export default {
 .game-area {
   position: relative;
   width: 100%;
-  max-width: 400px;
-  height: 80vh;
+  max-width: 700px;
+  height: 90vh;
   /* overflow: hidden; */
 }
 
@@ -634,7 +733,7 @@ export default {
   cursor: grab;
 }
 
-.path-1, .path-2 {
+.path-1, .path-2, .path-3, .path-4 {
   filter: drop-shadow(0 0 8px rgba(255,255,255,0.3));
   transition: stroke 0.3s ease;
 }
@@ -741,6 +840,24 @@ export default {
   border-radius: 15px;
   backdrop-filter: blur(10px);
   animation: fadeInOut 2s infinite;
+  margin-bottom: 10px;
+}
+
+.game-info {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.level-info, .candy-info {
+  color: white;
+  background: rgba(0,0,0,0.5);
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.2);
 }
 
 @keyframes fadeInOut {
