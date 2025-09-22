@@ -15,6 +15,6 @@ export default {
   height: 100vh;
   margin: 0 auto;
   font-family: 'Arial', sans-serif;
-  overflow: hidden;
+  /* overflow: hidden; */
 }
 </style>

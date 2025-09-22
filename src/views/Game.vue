@@ -1,15 +1,11 @@
 <template>
   <div class="game">
-    <div class="game-container">
+    <img v-if="selectedLevel === 'a'" src="@/assets/images/250827_GAME_4.jpg" alt="game_bg" class="game_bg-img">
+    <img v-if="selectedLevel === 'b'" src="@/assets/images/250827_GAME_5.jpg" alt="game_bg" class="game_bg-img">
+    <div class="game-container" :class="{ 'level-a': selectedLevel === 'a', 'level-b': selectedLevel === 'b' }">
+      
       <!-- 遊戲區域 -->
       <div class="game-area" ref="gameArea">
-        <!-- <img src="@/assets/challenge.png" alt="challenge" class="challenge-img absolute-img">
-        <img src="@/assets/head.png" alt="head" class="head-img absolute-img">
-        <img src="@/assets/strawberry.png" alt="strawberry" class="strawberry-img absolute-img">
-        <img src="@/assets/grape1.png" alt="grape" class="grape1-img absolute-img">
-        <img src="@/assets/grape2.png" alt="grape" class="grape2-img absolute-img">
-        <img src="@/assets/star.png" alt="star" class="star-img absolute-img"> -->
-
         <!-- SVG 路徑 -->
         <svg class="line-svg" :viewBox="levelConfig.viewBox" ref="svgElement">
           <!-- 動態路徑，根據關卡顯示不同路徑 -->
@@ -17,7 +13,7 @@
             v-for="(path, index) in levelConfig.paths"
             :key="index"
             :d="path.d"
-            stroke="#bfbfbf" 
+            stroke="transparent" 
             stroke-width="10" 
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -31,18 +27,18 @@
             :y="levelConfig.endZone.y" 
             :width="levelConfig.endZone.width" 
             :height="levelConfig.endZone.height" 
-            fill="rgba(255,107,107,0.3)" 
-            stroke="#ff6b6b" 
+            fill="transparent" 
+            stroke="transparent" 
             stroke-width="4"
             class="end-zone"
           />
           
           <!-- 玩家元件（可拖動的草莓糖果） -->
           <image 
-            :x="playerPosition.x - 25" 
-            :y="playerPosition.y - 25" 
-            width="50"
-            height="50"
+            :x="playerPosition.x - 22.5" 
+            :y="playerPosition.y - 22.5" 
+            width="45"
+            height="45"
             :href="candyImage"
             class="player"
             :class="{ 'shaking': isShaking, 'dragging': isMouseDown }"
@@ -64,29 +60,26 @@
             v-if="gameState === 'playing'"
             :cx="playerPosition.x" 
             :cy="playerPosition.y" 
-            r="32.5" 
+            r="27.5" 
             fill="none" 
             stroke="rgba(255,0,0,0.5)" 
             stroke-width="2"
             class="debug-circle"
           />
         </svg>
+        
       </div>
 
 
       <!-- 遊戲結束畫面 -->
       <div v-if="gameState === 'gameOver'" class="game-over">
         <h2>遊戲結束！</h2>
-        <p>你的得分: {{ score }}</p>
-        <p v-if="score === bestScore" class="new-record">🎉 新紀錄！</p>
+     
       </div>
 
       <!-- 完成畫面 -->
       <div v-if="gameState === 'completed'" class="completed">
         <h2>🎉 完成！</h2>
-        <p>恭喜你成功將草莓糖果拖到終點！</p>
-        <p>你的得分: {{ score }}</p>
-        <p v-if="score === bestScore" class="new-record">🏆 新紀錄！</p>
         <div class="completed-actions">
           <button @click="restartGame" class="restart-btn">再玩一次</button>
           <router-link to="/" class="home-btn">回到首頁</router-link>
@@ -141,7 +134,7 @@ export default {
       // 性能優化
       cachedRect: null,
       lastMoveTime: 0,
-      lastCollisionCheck: 0
+      lastCollisionCheck: 0,
     }
   },
   computed: {
@@ -207,7 +200,6 @@ export default {
   mounted() {
     this.gameArea = this.$refs.gameArea;
     this.svgElement = this.$refs.svgElement;
-    this.setupEventListeners();
     this.initializePaths();
     this.initializeAudio();
     
@@ -215,6 +207,8 @@ export default {
     this.playerPosition = { ...this.levelConfig.startPosition };
     
     this.startGame();
+    
+    this.setupEventListeners();
     
     // 添加窗口大小變化監聽
     window.addEventListener('resize', this.handleResize);
@@ -237,6 +231,20 @@ export default {
     window.removeEventListener('resize', this.handleResize);
   },
   methods: {
+    // 節流函數，限制函數執行頻率
+    throttle(func, limit) {
+      let inThrottle;
+      return function() {
+        const args = arguments;
+        const context = this;
+        if (!inThrottle) {
+          func.apply(context, args);
+          inThrottle = true;
+          setTimeout(() => inThrottle = false, limit);
+        }
+      }
+    },
+    
     setCandyImage() {
       // 根據選擇的糖果設置對應的圖片
       if (this.selectedCandy === '1') {
@@ -251,18 +259,20 @@ export default {
   
     
     setupEventListeners() {
-      // 滑鼠事件 - 優化配置
+      // 創建throttled函數
+      this.throttledMouseMove = this.throttle(this.handleMove, 16); // 60fps
+      this.throttledTouchMove = this.throttle(this.handleTouchMove, 16); // 60fps
+      
+      // 滑鼠事件 - 優化配置，使用throttle減少事件頻率
       this.gameArea.addEventListener('mousedown', this.handleStart, { passive: false });
-      this.gameArea.addEventListener('mousemove', this.handleMove, { passive: false });
+      this.gameArea.addEventListener('mousemove', this.throttledMouseMove, { passive: false });
       this.gameArea.addEventListener('mouseup', this.handleEnd, { passive: false });
       this.gameArea.addEventListener('mouseleave', this.handleEnd, { passive: false });
       
       // 觸控事件
       this.gameArea.addEventListener('touchstart', this.handleTouchStart, { passive: false });
-      this.gameArea.addEventListener('touchmove', this.handleTouchMove, { passive: false });
+      this.gameArea.addEventListener('touchmove', this.throttledTouchMove, { passive: false });
       this.gameArea.addEventListener('touchend', this.handleEnd, { passive: false });
-      
-      // BGM 已在遊戲開始時播放，不需要在移動時重複觸發
       
       // 防止右鍵選單
       this.gameArea.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -270,18 +280,115 @@ export default {
     
     removeEventListeners() {
       this.gameArea.removeEventListener('mousedown', this.handleStart);
-      this.gameArea.removeEventListener('mousemove', this.handleMove);
+      this.gameArea.removeEventListener('mousemove', this.throttledMouseMove);
       this.gameArea.removeEventListener('mouseup', this.handleEnd);
       this.gameArea.removeEventListener('mouseleave', this.handleEnd);
       this.gameArea.removeEventListener('touchstart', this.handleTouchStart);
-      this.gameArea.removeEventListener('touchmove', this.handleTouchMove);
+      this.gameArea.removeEventListener('touchmove', this.throttledTouchMove);
       this.gameArea.removeEventListener('touchend', this.handleEnd);
+      this.gameArea.removeEventListener('contextmenu', (e) => e.preventDefault());
     },
     
     initializePaths() {
       // 獲取路徑元素
       this.pathElements = this.svgElement.querySelectorAll('path');
     },
+    
+    handleStart(e) {
+      if (this.gameState !== 'playing') return;
+      
+      // 使用統一的座標轉換方法
+      const { x, y } = this.convertToSVGCoordinates(e);
+      
+      // 簡化的檢測邏輯
+      const tolerance = 75;
+      const isOnPlayer = Math.abs(x - this.playerPosition.x) <= tolerance && 
+                        Math.abs(y - this.playerPosition.y) <= tolerance;
+      
+      if (!isOnPlayer) {
+        const looseTolerance = 115;
+        const isOnPlayerLoose = Math.abs(x - this.playerPosition.x) <= looseTolerance && 
+                              Math.abs(y - this.playerPosition.y) <= looseTolerance;
+        if (!isOnPlayerLoose) return;
+      }
+      
+      e.preventDefault();
+      this.isMouseDown = true;
+    },
+    
+    handleTouchStart(e) {
+      if (this.gameState !== 'playing') return;
+      
+      const touch = e.touches[0];
+      const { x, y } = this.convertToSVGCoordinates(touch);
+      
+      const tolerance = 95;
+      const isOnPlayer = Math.abs(x - this.playerPosition.x) <= tolerance && 
+                        Math.abs(y - this.playerPosition.y) <= tolerance;
+      
+      if (!isOnPlayer) {
+        const looseTolerance = 115;
+        const isOnPlayerLoose = Math.abs(x - this.playerPosition.x) <= looseTolerance && 
+                              Math.abs(y - this.playerPosition.y) <= looseTolerance;
+        if (!isOnPlayerLoose) return;
+      }
+      
+      e.preventDefault();
+      this.isMouseDown = true;
+    },
+    
+    handleMove(e) {
+      if (!this.isMouseDown || this.gameState !== 'playing') return;
+      e.preventDefault();
+      this.updatePlayerPosition(e);
+    },
+    
+    handleTouchMove(e) {
+      if (!this.isMouseDown || this.gameState !== 'playing') return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      this.updatePlayerPosition(touch);
+    },
+    
+    handleEnd() {
+      this.isMouseDown = false;
+    },
+    
+    
+    updatePlayerPosition(e) {
+      // 使用統一的座標轉換方法
+      const { x, y } = this.convertToSVGCoordinates(e);
+      
+      // 限制在 SVG 範圍內，但允許稍微超出底部以觸發滾動
+      const clampedX = Math.max(0, Math.min(this.levelConfig.svgWidth, x));
+      const clampedY = Math.max(0, Math.min(this.levelConfig.svgHeight + 100, y)); // 允許超出底部100px
+      
+      // 立即更新位置，提升響應性
+      this.playerPosition = { x: clampedX, y: clampedY };
+      
+      // 將非關鍵計算移到下一幀執行，但保持位置更新的即時性
+      if (this.animationFrameId) {
+        cancelAnimationFrame(this.animationFrameId);
+      }
+      this.animationFrameId = requestAnimationFrame(() => {
+        // 碰撞檢測 - 進一步降低頻率以提升性能
+        const now = Date.now();
+        if (now - this.lastCollisionCheck > 150) {
+          this.lastCollisionCheck = now;
+          
+          if (this.checkCollision(clampedX, clampedY)) {
+            this.handleCollision();
+            return;
+          }
+          
+          if (this.checkWinCondition(clampedX, clampedY)) {
+            this.winGame();
+            return;
+          }
+        }
+      });
+    },
+    
     
     initializeAudio() {
       // 初始化音效
@@ -373,6 +480,9 @@ export default {
       this.gameStartTime = Date.now();
       this.showLightning = false; // 重置閃電效果
       
+      // 重置SVG位置
+      this.resetSVGPosition();
+      
       // 根據關卡調整遊戲難度
       this.adjustGameDifficulty();
       
@@ -382,6 +492,10 @@ export default {
           this.score += 1;
         }
       }, 100);
+    },
+    
+    resetSVGPosition() {
+      // SVG位置重置功能已移除
     },
     
     adjustGameDifficulty() {
@@ -416,189 +530,52 @@ export default {
       if (this.scoreInterval) {
         clearInterval(this.scoreInterval);
       }
+      // 重置SVG位置
+      this.resetSVGPosition();
       this.startGame();
     },
     
-    handleStart(e) {
-      if (this.gameState !== 'playing') return;
-      
-      // 使用統一的座標轉換方法
-      const { x, y } = this.convertToSVGCoordinates(e);
-      
-      // 根據遊戲區域大小動態調整容錯範圍
-      const baseTolerance = 80; // 基礎容錯範圍
-      const tolerance = baseTolerance; // 保持適中的容錯範圍
-      
-      const isOnPlayer = Math.abs(x - this.playerPosition.x) <= tolerance && 
-                        Math.abs(y - this.playerPosition.y) <= tolerance;
-      
-      console.log('=== 拖動檢測 ===');
-      console.log('點擊位置:', x, y);
-      console.log('玩家位置:', this.playerPosition.x, this.playerPosition.y);
-      console.log('距離:', Math.abs(x - this.playerPosition.x), Math.abs(y - this.playerPosition.y));
-      console.log('容錯範圍:', tolerance);
-      console.log('可抓取:', isOnPlayer);
-      
-      // 如果正常檢測失敗，嘗試更寬鬆的檢測
-      if (!isOnPlayer) {
-        const looseTolerance = 120; // 適度調整寬鬆檢測範圍
-        const isOnPlayerLoose = Math.abs(x - this.playerPosition.x) <= looseTolerance && 
-                              Math.abs(y - this.playerPosition.y) <= looseTolerance;
-        console.log('寬鬆檢測 (容錯:', looseTolerance, '):', isOnPlayerLoose);
-        
-        if (!isOnPlayerLoose) {
-          console.log('=== 拖動檢測失敗 ===');
-          return;
-        }
-        console.log('使用寬鬆檢測成功');
-      }
-      
-      e.preventDefault();
-      this.isMouseDown = true;
-      console.log('開始拖動玩家元件');
-    },
     
-    handleTouchStart(e) {
-      if (this.gameState !== 'playing') return;
-      
-      const touch = e.touches[0];
-      // 使用統一的座標轉換方法
-      const { x, y } = this.convertToSVGCoordinates(touch);
-      
-      // 使用更大的容錯範圍來確保可以抓取
-      const tolerance = 100; // 進一步增加容錯範圍
-      
-      const isOnPlayer = Math.abs(x - this.playerPosition.x) <= tolerance && 
-                        Math.abs(y - this.playerPosition.y) <= tolerance;
-      
-      console.log('=== 觸摸檢測 ===');
-      console.log('觸摸位置:', x, y);
-      console.log('玩家位置:', this.playerPosition.x, this.playerPosition.y);
-      console.log('距離:', Math.abs(x - this.playerPosition.x), Math.abs(y - this.playerPosition.y));
-      console.log('容錯範圍:', tolerance);
-      console.log('可抓取:', isOnPlayer);
-      
-      // 如果正常檢測失敗，嘗試更寬鬆的檢測
-      if (!isOnPlayer) {
-        const looseTolerance = 120; // 適度調整寬鬆檢測範圍
-        const isOnPlayerLoose = Math.abs(x - this.playerPosition.x) <= looseTolerance && 
-                              Math.abs(y - this.playerPosition.y) <= looseTolerance;
-        console.log('寬鬆檢測 (容錯:', looseTolerance, '):', isOnPlayerLoose);
-        
-        if (!isOnPlayerLoose) {
-          console.log('=== 觸摸檢測失敗 ===');
-          return;
-        }
-        console.log('使用寬鬆檢測成功');
-      }
-      
-      e.preventDefault();
-      this.isMouseDown = true;
-    },
-    
-    handleMove(e) {
-      if (!this.isMouseDown || this.gameState !== 'playing') return;
-      e.preventDefault();
-      this.updatePlayerPosition(e);
-    },
-    
-    handleTouchMove(e) {
-      if (!this.isMouseDown || this.gameState !== 'playing') return;
-      e.preventDefault();
-      const touch = e.touches[0];
-      this.updatePlayerPosition(touch);
-    },
-    
-    handleEnd() {
-      this.isMouseDown = false;
-      if (this.animationFrameId) {
-        cancelAnimationFrame(this.animationFrameId);
-        this.animationFrameId = null;
-      }
-      this.pendingPosition = null;
-    },
-    
-    // 統一的座標轉換方法
+    // 統一的座標轉換方法 - 超優化版本
     convertToSVGCoordinates(e) {
-      const svgRect = this.svgElement.getBoundingClientRect();
+      // 緩存SVG矩形，避免重複計算 - 降低更新頻率
+      if (!this.cachedRect || Date.now() - this.lastMoveTime > 200) {
+        this.cachedRect = this.svgElement.getBoundingClientRect();
+        this.lastMoveTime = Date.now();
+      }
       
-      console.log('=== 座標轉換調試 ===');
-      console.log('滑鼠位置:', e.clientX, e.clientY);
-      console.log('SVG位置:', svgRect.left, svgRect.top);
-      console.log('SVG大小:', svgRect.width, svgRect.height);
-      console.log('遊戲區域尺寸: 700px x 90vh');
-      console.log('SVG尺寸:', this.levelConfig.svgWidth, 'x', this.levelConfig.svgHeight);
+      const svgRect = this.cachedRect;
       
-      // 計算相對於SVG的位置
-      const relativeX = (e.clientX - svgRect.left) / svgRect.width;
-      const relativeY = (e.clientY - svgRect.top) / svgRect.height;
-      
-      console.log('相對位置:', relativeX, relativeY);
-      
-      // 轉換為 SVG 座標系統，使用動態的SVG尺寸
-      // 使用更精確的計算，考慮SVG的實際縮放比例
+      // 預計算比例，避免重複除法運算
       const scaleX = this.levelConfig.svgWidth / svgRect.width;
       const scaleY = this.levelConfig.svgHeight / svgRect.height;
       
+      // 直接計算，避免中間變量
       const x = (e.clientX - svgRect.left) * scaleX;
       const y = (e.clientY - svgRect.top) * scaleY;
-      
-      console.log('縮放比例:', scaleX, scaleY);
-      console.log('SVG座標:', x, y);
-      console.log('玩家位置:', this.playerPosition.x, this.playerPosition.y);
-      console.log('距離:', Math.abs(x - this.playerPosition.x), Math.abs(y - this.playerPosition.y));
-      console.log('==================');
       
       return { x, y };
     },
     
-    updatePlayerPosition(e) {
-      // 使用統一的座標轉換方法
-      const { x, y } = this.convertToSVGCoordinates(e);
-      
-      // 限制在 SVG 範圍內
-      const clampedX = Math.max(0, Math.min(this.levelConfig.svgWidth, x));
-      const clampedY = Math.max(0, Math.min(this.levelConfig.svgHeight, y));
-      
-      // 立即更新位置，提升響應性
-      this.playerPosition = { x: clampedX, y: clampedY };
-      
-      // 減少碰撞檢測頻率：每30ms檢測一次，提高響應性
-      const now = Date.now();
-      if (now - this.lastCollisionCheck > 30) {
-        this.lastCollisionCheck = now;
-        
-        // 檢查碰撞
-        if (this.checkCollision(clampedX, clampedY)) {
-          this.handleCollision();
-          return;
-        }
-        
-        // 檢查勝利條件
-        if (this.checkWinCondition(clampedX, clampedY)) {
-          this.winGame();
-          return;
-        }
-      }
-    },
     
     checkCollision(x, y) {
       // 碰撞檢測範圍與元件大小一致，根據遊戲區域調整精度
-      const blockSize = 50; // 草莓糖果大小
+      const blockSize = 45; // 草莓糖果大小
       const pathWidth = 10; // 路徑寬度 (與SVG中的stroke-width一致)
-      const tolerance = (blockSize / 2) + (pathWidth / 2) + 5; // 區塊半徑 + 路徑半寬 + 小緩衝
+      const tolerance = (blockSize / 2) + (pathWidth / 2); // 區塊半徑 + 路徑半寬
+      const toleranceSquared = tolerance * tolerance; // 預計算平方值，避免開方運算
       
       for (let path of this.pathElements) {
         const pathLength = path.getTotalLength();
-        const steps = Math.floor(pathLength / 15); // 提高檢測密度以適應更大的遊戲區域
+        const steps = Math.floor(pathLength / 20); // 降低檢測密度以提升性能
         
         for (let i = 0; i <= steps; i++) {
           const point = path.getPointAtLength((i / steps) * pathLength);
           const dx = x - point.x;
           const dy = y - point.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
+          const distanceSquared = dx * dx + dy * dy; // 使用平方距離比較，避免開方運算
           
-          if (distance < tolerance) {
+          if (distanceSquared < toleranceSquared) {
             return true;
           }
         }
@@ -620,6 +597,7 @@ export default {
              y >= (endY - rectHeight/2) && 
              y <= (endY + rectHeight/2);
     },
+    
     
     handleCollision() {
       // 立即停止拖動
@@ -696,40 +674,51 @@ export default {
 <style scoped>
 .game {
   width: 100vw;
-  height: 100vh;
-  background-image: url('../assets/background.jpg');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  min-height: 100vh;
   touch-action: none; /* 防止手機上的滾動和縮放 */
   user-select: none; /* 防止文字選取 */
   font-family: 'Arial', sans-serif;
-  overflow: hidden;
+  overflow: auto;
+  position: relative;
+}
+.game_bg-img {
+  width: 100%;
+  height: 100%;
+
 }
 
 .game-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
+  position: absolute;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 20px;
+  justify-content: flex-start;
   box-sizing: border-box;
 }
 
+.game-container.level-a {
+  width: 77.5%;
+  top: 26.7%;
+  left: 11.4%;
+}
+
+.game-container.level-b {
+  width: 82.5%;
+  top: 27.7%;
+  left: 8.8%;
+}
+
 .game-area {
-  position: relative;
+  position: absolute;
   width: 100%;
-  max-width: 700px;
-  height: 90vh;
-  /* overflow: hidden; */
+  height: 100vh;
+  top: 0;
+  left: 0;
 }
 
 .line-svg {
   width: 100%;
-  height: 100%;
+  height: auto;
   cursor: grab;
 }
 
@@ -744,6 +733,8 @@ export default {
   cursor: grab;
   user-select: none;
   pointer-events: none; /* 讓圖片本身不阻擋拖動事件 */
+  will-change: transform; /* 提示瀏覽器優化變換 */
+  transform: translateZ(0); /* 啟用硬體加速 */
 }
 
 .player:active {
@@ -764,6 +755,7 @@ export default {
 .player.dragging {
   filter: drop-shadow(0 0 12px rgba(255,107,107,0.8));
 }
+
 
 .debug-circle {
   pointer-events: none;
@@ -867,7 +859,7 @@ export default {
 
 .game-over {
   position: absolute;
-  top: 50%;
+  top: 10%;
   left: 50%;
   transform: translate(-50%, -50%);
   background: rgba(0,0,0,0.8);
@@ -899,7 +891,7 @@ export default {
 
 .completed {
   position: absolute;
-  top: 50%;
+  top: 10%;
   left: 50%;
   transform: translate(-50%, -50%);
   background: rgba(0,0,0,0.9);
@@ -962,10 +954,6 @@ export default {
 
 /* 響應式設計 */
 @media (max-width: 768px) {
-  .game-area {
-    height: 80vh;
-    margin: 20px 0;
-  }
 
   .game-controls {
     bottom: 10px;
@@ -1005,20 +993,15 @@ export default {
 }
 
 @media (max-width: 480px) {
-  .game-container {
-    padding: 10px;
-  }
-
   .game-area {
-    max-width: 400px;
-    height: 80vh;
+    min-height: 100vh;
   }
 }
 
 /* 橫向模式優化 */
 @media (orientation: landscape) and (max-height: 600px) {
   .game-area {
-    height: 85vh;
+    min-height: 100vh;
     max-height: none;
   }
 
@@ -1029,36 +1012,5 @@ export default {
 
 .absolute-img {
   position: absolute;
-}
-.challenge-img {
-  width: 280px;
-  top: -20px;
-  left: 50px;
-}
-.head-img {
-  width: 100px;
-  top: 385px;
-  left: 80px;
-}
-.strawberry-img {
-  width: 100px;
-  transform: rotate(-30deg);
-  top: 190px;
-  left: -30px;
-}
-.grape1-img {
-  width: 80px;
-  top: 140px;
-  left: 320px;
-}
-.grape2-img {
-  width: 80px;
-  top: 500px;
-  left: -35px;
-}
-.star-img {
-  width: 70px;
-  top: 40px;
-  left: 320px;
 }
 </style>
