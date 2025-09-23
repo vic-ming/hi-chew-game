@@ -1,7 +1,13 @@
 <template>
   <div class="game">
-    <img v-if="selectedLevel === 'a'" src="@/assets/images/250827_GAME_4.jpg" alt="game_bg" class="game_bg-img">
-    <img v-if="selectedLevel === 'b'" src="@/assets/images/250827_GAME_5.jpg" alt="game_bg" class="game_bg-img">
+    <img v-if="selectedLevel === 'a'" src="@/assets/images/game_a_bg.webp" alt="game_bg" class="game_bg-img">
+    <img v-if="selectedLevel === 'b'" src="@/assets/images/game_b_bg.webp" alt="game_bg" class="game_bg-img">
+    <div class="heart-container">
+      <img v-if="lives === 3" src="@/assets/images/heart-3.png" class="heart-img">
+      <img v-if="lives === 2" src="@/assets/images/heart-2.png" class="heart-img">
+      <img v-if="lives === 1" src="@/assets/images/heart-1.png" class="heart-img">
+      <img v-if="lives === 0" src="@/assets/images/heart-0.png" class="heart-img">      
+    </div>
     <div class="game-container" :class="{ 'level-a': selectedLevel === 'a', 'level-b': selectedLevel === 'b' }">
       
       <!-- 遊戲區域 -->
@@ -14,7 +20,7 @@
             :key="index"
             :d="path.d"
             stroke="transparent" 
-            stroke-width="10" 
+            stroke-width="18" 
             stroke-linecap="round"
             stroke-linejoin="round"
             fill="none"
@@ -67,15 +73,16 @@
             class="debug-circle"
           />
         </svg>
+
+        <!-- 遊戲結束畫面 -->
+        <div v-if="gameState === 'gameOver'" class="game-over">
+          <img src="@/assets/images/failed.png" alt="game_over" class="game-over-img">
+        </div>
         
       </div>
 
 
-      <!-- 遊戲結束畫面 -->
-      <div v-if="gameState === 'gameOver'" class="game-over">
-        <h2>遊戲結束！</h2>
      
-      </div>
 
       <!-- 完成畫面 -->
       <div v-if="gameState === 'completed'" class="completed">
@@ -105,6 +112,7 @@ export default {
       gameState: 'playing', // ready, playing, gameOver, completed
       score: 0,
       bestScore: parseInt(localStorage.getItem('bestScore')) || 0,
+      lives: 3, // 生命值，初始為3條命
       playerPosition: { x: 312, y: 80 }, // 起點位置 (將在mounted時根據關卡更新)
       isShaking: false,
       gameArea: null,
@@ -135,6 +143,9 @@ export default {
       cachedRect: null,
       lastMoveTime: 0,
       lastCollisionCheck: 0,
+      // 自動重新開始
+      restartTimer: null,
+      countdown: 0,
     }
   },
   computed: {
@@ -167,23 +178,23 @@ export default {
           svgHeight: 1772
         }
       } else {
-        // 默認關卡 A
+        // 默認關卡 A - 使用 game_a_line.svg 的路徑
         return {
-          viewBox: "0 0 1156 1846.25",
+          viewBox: "0 0 1920 1920",
           paths: [
             {
-              d: "M312.52,29.94h512.47c.29,0,.59,0,.88,0,82.27.81,148.94,67.99,148.94,150.45s-66.67,149.64-148.94,150.45c-.29,0-.58,0-.88,0H312.95c-32.42,0-58.79,26.37-58.79,58.79s26.37,58.79,58.79,58.79h512.05c.29,0,.59,0,.88,0,82.27.81,148.94,67.99,148.94,150.45s-66.67,149.64-148.94,150.45c-.29,0-.58,0-.88,0H312.63c-61.52,0-111.58,50.05-111.58,111.58s50.05,111.58,111.58,111.58h217.51l8.37-7.03c60.96-88.9,163.28-147.22,279.22-147.22,186.85,0,338.31,151.47,338.31,338.31s-151.47,338.31-338.31,338.31c-99.58,0-189.1-43.02-251.01-111.49l-10.55-6.09H177.31c-32.05,0-58.12,26.07-58.12,58.12s26.07,58.12,58.12,58.12c3.17,0,6.31.25,9.4.75h319.23c32.92,0,59.61,26.69,59.61,59.61v277.15",
+              d: "M694.52,59.44h512.47c.29,0,.59,0,.88,0,82.27.81,148.94,67.99,148.94,150.45s-66.67,149.64-148.94,150.45c-.29,0-.58,0-.88,0h-203.05c-32.42,0-58.79,26.37-58.79,58.79s26.37,58.79,58.79,58.79h203.05c.29,0,.59,0,.88,0,82.27.81,148.94,67.99,148.94,150.45s-66.67,149.64-148.94,150.45c-.29,0-.58,0-.88,0h-512.36c-61.52,0-111.58,50.05-111.58,111.58s50.05,111.58,111.58,111.58h217.51l8.37-7.03c60.96-88.9,163.28-147.22,279.22-147.22,186.85,0,338.31,151.47,338.31,338.31s-151.47,338.31-338.31,338.31c-99.58,0-189.1-43.02-251.01-111.49l-10.55-6.09h-378.85c-32.05,0-58.12,26.07-58.12,58.12s26.07,58.12,58.12,58.12c3.17,0,6.31.25,9.4.75h319.23c32.92,0,59.61,26.69,59.61,59.61v277.15",
               class: "path-1"
             },
             {
-              d: "M446.32,1831.06v-217.54H178.06c-3.76,0-7.47-.35-11.11-1.05C73.96,1607.09-.04,1529.73-.04,1435.42s79.56-177.35,177.35-177.35h436.98l12.05,3.66c37.15,67.46,108.93,113.17,191.39,113.17,120.59,0,218.34-97.75,218.34-218.34s-97.75-218.34-218.34-218.34c-91.07,0-169.11,55.75-201.86,134.99l-303.23.43c-117.29,0-212.72-95.43-212.72-212.72s95.43-212.72,212.72-212.72h511.73c27.19,0,49.31-22.12,49.31-49.31s-22.12-49.31-49.31-49.31h-511.41c-88.19,0-159.94-71.75-159.94-159.94s71.75-159.94,159.94-159.94h511.41c27.19,0,49.31-22.12,49.31-49.31s-22.12-49.31-49.31-49.31h-511.84",
+              d: "M828.32,1860.56v-217.54h-268.27c-3.76,0-7.47-.35-11.11-1.05-92.99-5.39-166.99-82.74-166.99-177.05s79.56-177.35,177.35-177.35h436.98l12.05,3.66c37.15,67.46,108.93,113.17,191.39,113.17,120.59,0,218.34-97.75,218.34-218.34s-97.75-218.34-218.34-218.34c-91.07,0-169.11,55.75-201.86,134.99l-303.23.43c-117.29,0-212.72-95.43-212.72-212.72s95.43-212.72,212.72-212.72h511.73c27.19,0,49.31-22.12,49.31-49.31s-22.12-49.31-49.31-49.31h-202.41c-88.19,0-159.94-71.75-159.94-159.94s71.75-159.94,159.94-159.94h202.41c27.19,0,49.31-22.12,49.31-49.31s-22.12-49.31-49.31-49.31h-511.84",
               class: "path-2"
             }
           ],
-          startPosition: { x: 312, y: 80 },
-          endZone: { x: 475, y: 1800, width: 60, height: 60 },
-          svgWidth: 1156,
-          svgHeight: 1846.25
+          startPosition: { x: 694, y: 110 },
+          endZone: { x: 828, y: 1860, width: 60, height: 60 },
+          svgWidth: 1920,
+          svgHeight: 1920
         }
       }
     }
@@ -217,6 +228,10 @@ export default {
     this.removeEventListeners();
     if (this.scoreInterval) {
       clearInterval(this.scoreInterval);
+    }
+    // 清理重新開始計時器
+    if (this.restartTimer) {
+      clearInterval(this.restartTimer);
     }
     // 清理動畫幀
     if (this.animationFrameId) {
@@ -476,6 +491,7 @@ export default {
     startGame() {
       this.gameState = 'playing';
       this.score = 0;
+      this.lives = 3; // 重置生命值為3
       this.playerPosition = { ...this.levelConfig.startPosition };
       this.gameStartTime = Date.now();
       this.showLightning = false; // 重置閃電效果
@@ -523,10 +539,19 @@ export default {
     },
     
     restartGame() {
+      // 清理重新開始計時器
+      if (this.restartTimer) {
+        clearInterval(this.restartTimer);
+        this.restartTimer = null;
+      }
+      
       this.gameState = 'playing';
+      this.lives = 3; // 重置生命值為3
       this.playerPosition = { ...this.levelConfig.startPosition };
       this.isShaking = false;
       this.showLightning = false; // 重置閃電效果
+      this.countdown = 0; // 重置倒數計時
+      
       if (this.scoreInterval) {
         clearInterval(this.scoreInterval);
       }
@@ -561,13 +586,13 @@ export default {
     checkCollision(x, y) {
       // 碰撞檢測範圍與元件大小一致，根據遊戲區域調整精度
       const blockSize = 45; // 草莓糖果大小
-      const pathWidth = 10; // 路徑寬度 (與SVG中的stroke-width一致)
+      const pathWidth = 18; // 路徑寬度 (與SVG中的stroke-width一致)
       const tolerance = (blockSize / 2) + (pathWidth / 2); // 區塊半徑 + 路徑半寬
       const toleranceSquared = tolerance * tolerance; // 預計算平方值，避免開方運算
       
       for (let path of this.pathElements) {
         const pathLength = path.getTotalLength();
-        const steps = Math.floor(pathLength / 20); // 降低檢測密度以提升性能
+        const steps = Math.floor(pathLength / 25); // 調整檢測密度以匹配更寬的路徑
         
         for (let i = 0; i <= steps; i++) {
           const point = path.getPointAtLength((i / steps) * pathLength);
@@ -608,6 +633,9 @@ export default {
       }
       this.pendingPosition = null;
       
+      // 扣生命值
+      this.lives--;
+      
       // 設置閃電效果位置
       this.lightningPosition = { x: this.playerPosition.x, y: this.playerPosition.y };
       this.showLightning = true;
@@ -615,15 +643,22 @@ export default {
       // 播放碰撞音效
       this.playSound(this.collisionAudio);
       
-      // 閃電效果保持顯示，不再隱藏
-      
-      // 延遲顯示失敗彈窗並播放失敗音效
-      setTimeout(() => {
-        this.gameOver();
-      }, 1000);
-      setTimeout(() => {
-        this.playSound(this.failAudio);
-      }, 1500); // 300ms 延遲，讓碰撞音效先播放
+      // 檢查是否還有生命值
+      if (this.lives <= 0) {
+        // 沒有生命值了，遊戲結束
+        setTimeout(() => {
+          this.gameOver();
+        }, 1000);
+        setTimeout(() => {
+          this.playSound(this.failAudio);
+        }, 1500); // 300ms 延遲，讓碰撞音效先播放
+      } else {
+        // 還有生命值，重置玩家位置到起點
+        setTimeout(() => {
+          this.playerPosition = { ...this.levelConfig.startPosition };
+          this.showLightning = false;
+        }, 1000);
+      }
     },
     
     gameOver() {
@@ -645,6 +680,29 @@ export default {
       setTimeout(() => {
         this.isShaking = false;
       }, 500);
+      
+      // 開始倒數計時並自動重新開始
+      this.startAutoRestart();
+    },
+    
+    startAutoRestart() {
+      this.countdown = 3;
+      
+      // 清除之前的計時器
+      if (this.restartTimer) {
+        clearInterval(this.restartTimer);
+      }
+      
+      // 開始倒數計時
+      this.restartTimer = setInterval(() => {
+        this.countdown--;
+        
+        if (this.countdown <= 0) {
+          clearInterval(this.restartTimer);
+          this.restartTimer = null;
+          this.restartGame();
+        }
+      }, 1000);
     },
     
     winGame() {
@@ -686,6 +744,17 @@ export default {
   height: 100%;
 
 }
+.heart-container {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  width: 200px;
+  z-index: 10;
+}
+.heart-img {
+  width: 100%;
+  height: 100%;
+}
 
 .game-container {
   position: absolute;
@@ -697,14 +766,14 @@ export default {
 }
 
 .game-container.level-a {
-  width: 77.5%;
-  top: 26.7%;
-  left: 11.4%;
+  width: 127.8%;
+  top: 25.9%;
+  left: -13.9%;
 }
 
 .game-container.level-b {
-  width: 82.5%;
-  top: 27.7%;
+  width: 82.4%;
+  top: 27.8%;
   left: 8.8%;
 }
 
@@ -735,6 +804,8 @@ export default {
   pointer-events: none; /* 讓圖片本身不阻擋拖動事件 */
   will-change: transform; /* 提示瀏覽器優化變換 */
   transform: translateZ(0); /* 啟用硬體加速 */
+  position: relative;
+  z-index: 21;
 }
 
 .player:active {
@@ -858,18 +929,18 @@ export default {
 }
 
 .game-over {
-  position: absolute;
-  top: 10%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(0,0,0,0.8);
-  color: white;
-  padding: 30px;
-  border-radius: 20px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  transform: translate(0, 0);
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
   text-align: center;
   z-index: 20;
-  backdrop-filter: blur(10px);
-  border: 2px solid rgba(255,255,255,0.2);
 }
 
 .game-over h2 {
@@ -882,6 +953,34 @@ export default {
   margin: 10px 0;
   font-size: 1.1rem;
 }
+
+.game-over-img {
+  width: 300px;
+}
+
+.countdown {
+  margin-top: 20px;
+  color: white;
+  font-size: 1.2rem;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  animation: pulse 1s infinite;
+}
+
+.countdown p {
+  margin: 0;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 10px 20px;
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
 
 .new-record {
   color: #ffd93d !important;
@@ -954,6 +1053,10 @@ export default {
 
 /* 響應式設計 */
 @media (max-width: 768px) {
+
+  .heart-container {
+    width: 100px;
+  }
 
   .game-controls {
     bottom: 10px;

@@ -4,13 +4,13 @@
     <div class="home-container" v-if="step === 1">
       <div class="pc-view">
         <div class="relative">
-          <img src="@/assets/images/pc-step-1.png" alt="" >
+          <img src="@/assets/images/pc-step-1.webp" alt="" >
           <div class="pc-next-btn-1" @click="stepNext"></div>
         </div>
       </div>
       <div class="mb-view">
         <div class="relative">
-          <img src="@/assets/images/mb-step-1.png" alt="">
+          <img src="@/assets/images/mb-step-1.webp" alt="">
           <div class="mb-next-btn-1" @click="stepNext"></div>
         </div>
       </div>
@@ -21,14 +21,14 @@
     <div class="home-container"  v-if="step === 2">
       <div class="pc-view">
         <div class="relative">
-          <img src="@/assets/images/pc-step-3.png" alt="">
+          <img src="@/assets/images/pc-step-3.webp" alt="">
           <div class="pc-next-btn-3-1" @click="stepNext(1)"></div>
           <div class="pc-next-btn-3-2" @click="stepNext(2)"></div>
         </div>
       </div>
       <div class="mb-view">
         <div class="relative">
-          <img src="@/assets/images/mb-step-3.png" alt="">
+          <img src="@/assets/images/mb-step-3.webp" alt="">
           <div class="mb-next-btn-3-1" @click="stepNext(1)"></div>
           <div class="mb-next-btn-3-2" @click="stepNext(2)"></div>
         </div>
@@ -39,14 +39,14 @@
     <div class="home-container" v-if="step === 3">
       <div class="pc-view">
         <div class="relative">
-          <img src="@/assets/images/pc-step-2.png" alt="">
+          <img src="@/assets/images/pc-step-2.webp" alt="">
           <div class="pc-next-btn-2-1" @click="startGame('a')"></div>
           <div class="pc-next-btn-2-2" @click="startGame('b')"></div>
         </div>
       </div>
       <div class="mb-view">
         <div class="relative">  
-          <img src="@/assets/images/mb-step-2.png" alt="">
+          <img src="@/assets/images/mb-step-2.webp" alt="">
           <div class="mb-next-btn-2-1" @click="startGame('a')"></div>
           <div class="mb-next-btn-2-2" @click="startGame('b')"></div>
         </div>
