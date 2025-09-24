@@ -86,11 +86,7 @@
 
       <!-- 完成畫面 -->
       <div v-if="gameState === 'completed'" class="completed">
-        <h2>🎉 完成！</h2>
-        <div class="completed-actions">
-          <button @click="restartGame" class="restart-btn">再玩一次</button>
-          <router-link to="/" class="home-btn">回到首頁</router-link>
-        </div>
+        <img src="@/assets/images/success.png" alt="game_over" class="game-over-img">
       </div>
     </div>
   </div>
@@ -989,19 +985,15 @@ export default {
 }
 
 .completed {
-  position: absolute;
-  top: 10%;
+  position: fixed;
   left: 50%;
+  bottom: 0%;
   transform: translate(-50%, -50%);
-  background: rgba(0,0,0,0.9);
   color: white;
   padding: 40px;
   border-radius: 20px;
   text-align: center;
-  z-index: 20;
-  backdrop-filter: blur(10px);
-  border: 2px solid rgba(78,205,196,0.5);
-  box-shadow: 0 0 30px rgba(78,205,196,0.3);
+  z-index: 20
 }
 
 .completed h2 {
