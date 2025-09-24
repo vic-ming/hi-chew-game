@@ -82,11 +82,10 @@
       </div>
 
 
-     
-
+  
       <!-- 完成畫面 -->
-      <div v-if="gameState === 'completed'" class="completed">
-        <img src="@/assets/images/success.png" alt="game_over" class="game-over-img">
+      <div v-if="gameState === 'completed'"  class="completed">
+        <img src="@/assets/images/success.png" alt="game_over" class="completed-img">
       </div>
     </div>
   </div>
@@ -988,6 +987,7 @@ export default {
   position: fixed;
   left: 50%;
   bottom: 0%;
+  width: 80vw;
   transform: translate(-50%, -50%);
   color: white;
   padding: 40px;
@@ -995,18 +995,11 @@ export default {
   text-align: center;
   z-index: 20
 }
-
-.completed h2 {
-  margin: 0 0 20px 0;
-  font-size: 2rem;
-  color: #4ecdc4;
-  text-shadow: 0 0 10px rgba(78,205,196,0.5);
+.completed-img {
+  width: 100%;
+  height: 100%;
 }
 
-.completed p {
-  margin: 15px 0;
-  font-size: 1.1rem;
-}
 
 .completed-actions {
   margin-top: 20px;
