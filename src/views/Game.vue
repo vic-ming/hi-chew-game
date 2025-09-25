@@ -135,12 +135,12 @@ export default {
       showLightning: false,
       lightningPosition: { x: 0, y: 0 },
       // 性能優化
-      cachedRect: null,
-      lastMoveTime: 0,
       lastCollisionCheck: 0,
       // 自動重新開始
       restartTimer: null,
       countdown: 0,
+      // 滾動動畫
+      scrollAnimationId: null,
     }
   },
   computed: {
@@ -231,6 +231,10 @@ export default {
     // 清理動畫幀
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
+    }
+    // 清理滾動動畫
+    if (this.scrollAnimationId) {
+      cancelAnimationFrame(this.scrollAnimationId);
     }
     // 停止BGM
     if (this.bgmAudio) {
@@ -350,12 +354,14 @@ export default {
     handleMove(e) {
       if (!this.isMouseDown || this.gameState !== 'playing') return;
       e.preventDefault();
+      e.stopPropagation();
       this.updatePlayerPosition(e);
     },
     
     handleTouchMove(e) {
       if (!this.isMouseDown || this.gameState !== 'playing') return;
       e.preventDefault();
+      e.stopPropagation();
       const touch = e.touches[0];
       this.updatePlayerPosition(touch);
     },
@@ -369,12 +375,25 @@ export default {
       // 使用統一的座標轉換方法
       const { x, y } = this.convertToSVGCoordinates(e);
       
-      // 限制在 SVG 範圍內，但允許稍微超出底部以觸發滾動
+      // 限制在 SVG 範圍內，但允許超出底部以確保可以到達終點
       const clampedX = Math.max(0, Math.min(this.levelConfig.svgWidth, x));
-      const clampedY = Math.max(0, Math.min(this.levelConfig.svgHeight + 100, y)); // 允許超出底部100px
+      const clampedY = Math.max(0, Math.min(this.levelConfig.svgHeight + 500, y)); // 增加到底部500px以確保可以到達終點
+      
+      // 調試信息（可以在開發時啟用）
+      if (this.gameState === 'playing' && this.isMouseDown) {
+        console.log(`拖動位置: 原始(${x.toFixed(1)}, ${y.toFixed(1)}) -> 限制後(${clampedX.toFixed(1)}, ${clampedY.toFixed(1)})`);
+        console.log(`SVG尺寸: ${this.levelConfig.svgWidth} x ${this.levelConfig.svgHeight}`);
+        console.log(`終點位置: (${this.levelConfig.endZone.x}, ${this.levelConfig.endZone.y})`);
+        console.log(`距離終點: ${Math.abs(clampedY - this.levelConfig.endZone.y).toFixed(1)}px`);
+        console.log(`頁面滾動位置: ${window.scrollY}px`);
+        console.log(`視窗高度: ${window.innerHeight}px`);
+      }
       
       // 立即更新位置，提升響應性
       this.playerPosition = { x: clampedX, y: clampedY };
+      
+      // 處理頁面自動滾動
+      this.handleAutoScroll(clampedY);
       
       // 將非關鍵計算移到下一幀執行，但保持位置更新的即時性
       if (this.animationFrameId) {
@@ -399,6 +418,50 @@ export default {
       });
     },
     
+    // 處理拖動時的自動滾動
+    handleAutoScroll(playerY) {
+      if (!this.isMouseDown || this.gameState !== 'playing') return;
+      
+      // 獲取SVG元素和視窗信息
+      const svgRect = this.svgElement.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const scrollThreshold = 200; // 距離視窗邊緣多少像素時開始滾動
+      const maxScrollSpeed = 15; // 增加最大滾動速度
+      
+      // 計算玩家在視窗中的相對位置
+      const playerViewportY = svgRect.top + (playerY * svgRect.height / this.levelConfig.svgHeight);
+      
+      // 計算滾動速度，距離邊緣越近滾動越快
+      let scrollSpeed = 0;
+      
+      // 檢查是否需要向下滾動
+      if (playerViewportY > viewportHeight - scrollThreshold) {
+        const distanceFromBottom = playerViewportY - (viewportHeight - scrollThreshold);
+        // 增加滾動係數，讓滾動更快
+        scrollSpeed = Math.min(maxScrollSpeed, Math.max(5, distanceFromBottom * 0.5));
+        this.smoothScroll(0, scrollSpeed);
+        console.log(`向下滾動: 速度=${scrollSpeed.toFixed(1)}, 距離底部=${distanceFromBottom.toFixed(1)}px`);
+      }
+      // 檢查是否需要向上滾動
+      else if (playerViewportY < scrollThreshold) {
+        const distanceFromTop = scrollThreshold - playerViewportY;
+        scrollSpeed = Math.min(maxScrollSpeed, Math.max(5, distanceFromTop * 0.5));
+        this.smoothScroll(0, -scrollSpeed);
+        console.log(`向上滾動: 速度=${scrollSpeed.toFixed(1)}, 距離頂部=${distanceFromTop.toFixed(1)}px`);
+      }
+    },
+    
+    // 平滑滾動函數
+    smoothScroll(x, y) {
+      // 使用 requestAnimationFrame 實現平滑滾動
+      if (this.scrollAnimationId) {
+        cancelAnimationFrame(this.scrollAnimationId);
+      }
+      
+      this.scrollAnimationId = requestAnimationFrame(() => {
+        window.scrollBy(x, y);
+      });
+    },
     
     initializeAudio() {
       // 初始化音效
@@ -497,6 +560,11 @@ export default {
       // 根據關卡調整遊戲難度
       this.adjustGameDifficulty();
       
+      // 調整容器高度以容納整個路徑
+      this.$nextTick(() => {
+        this.adjustGameContainerHeight();
+      });
+      
       // 開始計分
       this.scoreInterval = setInterval(() => {
         if (this.gameState === 'playing') {
@@ -522,8 +590,25 @@ export default {
       
       console.log('遊戲區域實際尺寸:', gameAreaWidth, 'x', gameAreaHeight);
       
+      // 動態調整遊戲容器高度以容納整個路徑
+      this.adjustGameContainerHeight();
+      
       // 可以根據需要調整其他參數
       // 例如：根據區域大小調整拖拽靈敏度等
+    },
+    
+    adjustGameContainerHeight() {
+      // 計算SVG的實際高度
+      if (this.svgElement) {
+        const svgRect = this.svgElement.getBoundingClientRect();
+        const containerHeight = Math.max(window.innerHeight, svgRect.height + 200); // 額外200px緩衝
+        
+        // 動態設置遊戲容器高度
+        const gameContainer = document.querySelector('.game-container');
+        if (gameContainer) {
+          gameContainer.style.minHeight = `${containerHeight}px`;
+        }
+      }
     },
     
     handleResize() {
@@ -556,15 +641,10 @@ export default {
     },
     
     
-    // 統一的座標轉換方法 - 超優化版本
+    // 統一的座標轉換方法 - 修復滾動時的座標問題
     convertToSVGCoordinates(e) {
-      // 緩存SVG矩形，避免重複計算 - 降低更新頻率
-      if (!this.cachedRect || Date.now() - this.lastMoveTime > 200) {
-        this.cachedRect = this.svgElement.getBoundingClientRect();
-        this.lastMoveTime = Date.now();
-      }
-      
-      const svgRect = this.cachedRect;
+      // 每次拖動時都重新獲取SVG矩形，確保座標準確性
+      const svgRect = this.svgElement.getBoundingClientRect();
       
       // 預計算比例，避免重複除法運算
       const scaleX = this.levelConfig.svgWidth / svgRect.width;
@@ -728,10 +808,11 @@ export default {
 .game {
   width: 100vw;
   min-height: 100vh;
-  touch-action: none; /* 防止手機上的滾動和縮放 */
+  touch-action: pan-y; /* 允許垂直滾動，防止水平滾動和縮放 */
   user-select: none; /* 防止文字選取 */
   font-family: 'Arial', sans-serif;
-  overflow: auto;
+  overflow-x: hidden; /* 防止水平滾動 */
+  overflow-y: auto; /* 允許垂直滾動 */
   position: relative;
 }
 .game_bg-img {
@@ -758,6 +839,7 @@ export default {
   align-items: center;
   justify-content: flex-start;
   box-sizing: border-box;
+  min-height: 100vh; /* 確保容器至少有一屏高度 */
 }
 
 .game-container.level-a {
@@ -775,7 +857,7 @@ export default {
 .game-area {
   position: absolute;
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   top: 0;
   left: 0;
 }
@@ -784,6 +866,7 @@ export default {
   width: 100%;
   height: auto;
   cursor: grab;
+  display: block; /* 確保SVG正確顯示 */
 }
 
 .path-1, .path-2, .path-3, .path-4 {
@@ -1059,7 +1142,6 @@ export default {
 
   .game-over {
     padding: 20px;
-    margin: 0 20px;
   }
 
   .game-over h2 {
