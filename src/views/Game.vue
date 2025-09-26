@@ -19,8 +19,8 @@
             v-for="(path, index) in levelConfig.paths"
             :key="index"
             :d="path.d"
-            stroke="transparent" 
-            stroke-width="18" 
+            stroke="#ff0000" 
+            stroke-width="3" 
             stroke-linecap="round"
             stroke-linejoin="round"
             fill="none"
@@ -53,10 +53,10 @@
           <!-- 閃電效果 -->
           <image 
             v-if="showLightning"
-            :x="lightningPosition.x - 60" 
-            :y="lightningPosition.y - 60" 
-            width="120"
-            height="120"
+            :x="lightningPosition.x - 100" 
+            :y="lightningPosition.y - 100" 
+            width="200"
+            height="200"
             :href="lightningImage"
             class="lightning-effect"
           />
@@ -661,13 +661,13 @@ export default {
     checkCollision(x, y) {
       // 碰撞檢測範圍與元件大小一致，根據遊戲區域調整精度
       const blockSize = 45; // 草莓糖果大小
-      const pathWidth = 18; // 路徑寬度 (與SVG中的stroke-width一致)
+      const pathWidth = 3; // 路徑寬度 (與SVG中的stroke-width一致)
       const tolerance = (blockSize / 2) + (pathWidth / 2); // 區塊半徑 + 路徑半寬
       const toleranceSquared = tolerance * tolerance; // 預計算平方值，避免開方運算
       
       for (let path of this.pathElements) {
         const pathLength = path.getTotalLength();
-        const steps = Math.floor(pathLength / 25); // 調整檢測密度以匹配更寬的路徑
+        const steps = Math.floor(pathLength / 15); // 調整檢測密度以匹配較窄的路徑
         
         for (let i = 0; i <= steps; i++) {
           const point = path.getPointAtLength((i / steps) * pathLength);
@@ -824,7 +824,7 @@ export default {
   position: fixed;
   top: 10px;
   right: 10px;
-  width: 200px;
+  width: 300px;
   z-index: 10;
 }
 .heart-img {
@@ -1021,19 +1021,9 @@ export default {
   z-index: 20;
 }
 
-.game-over h2 {
-  margin: 0 0 15px 0;
-  font-size: 1.8rem;
-  color: #ff6b6b;
-}
-
-.game-over p {
-  margin: 10px 0;
-  font-size: 1.1rem;
-}
 
 .game-over-img {
-  width: 300px;
+  width: 600px;
 }
 
 .countdown {
@@ -1123,7 +1113,7 @@ export default {
 @media (max-width: 768px) {
 
   .heart-container {
-    width: 100px;
+    width: 200px;
   }
 
   .game-controls {
@@ -1143,13 +1133,8 @@ export default {
   .game-over {
     padding: 20px;
   }
-
-  .game-over h2 {
-    font-size: 1.5rem;
-  }
-
-  .game-over p {
-    font-size: 1rem;
+  .game-over-img {
+    width: 300px;
   }
 
   .completed-actions {

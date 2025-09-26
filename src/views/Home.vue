@@ -3,8 +3,8 @@
     <!-- 遊戲說明 -->
     <div class="home-container" v-if="step === 1">
       <div class="pc-view">
-        <div class="relative">
-          <img src="@/assets/images/pc-step-1.webp" alt="" >
+        <div class="relative pc-out">
+          <img class="pc-img" src="@/assets/images/pc-step-1.webp" alt="" >
           <div class="pc-next-btn-1" @click="stepNext"></div>
         </div>
       </div>
@@ -20,8 +20,8 @@
     <!-- 選擇嗨啾 -->
     <div class="home-container"  v-if="step === 2">
       <div class="pc-view">
-        <div class="relative">
-          <img src="@/assets/images/pc-step-3.webp" alt="">
+        <div class="relative pc-out">
+          <img class="pc-img" src="@/assets/images/pc-step-3.webp" alt="">
           <div class="pc-next-btn-3-1" @click="stepNext(1)"></div>
           <div class="pc-next-btn-3-2" @click="stepNext(2)"></div>
         </div>
@@ -38,8 +38,8 @@
     <!-- 選擇關卡 -->
     <div class="home-container" v-if="step === 3">
       <div class="pc-view">
-        <div class="relative">
-          <img src="@/assets/images/pc-step-2.webp" alt="">
+        <div class="relative pc-out">
+          <img class="pc-img" src="@/assets/images/pc-step-2.webp" alt="">
           <div class="pc-next-btn-2-1" @click="startGame('a')"></div>
           <div class="pc-next-btn-2-2" @click="startGame('b')"></div>
         </div>
@@ -161,7 +161,7 @@ export default {
 
 .home-container {
   width: 100%;
-  height: 100%;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -170,58 +170,87 @@ export default {
 
 .home-container img {
   width: 100%;
+  height: auto;
   
   object-fit: contain;
   cursor: pointer;
 }
 
-.relative{
-  position: relative;
+.pc-img{
+  width: 100%;
+  height: auto;
+  max-height: 100vh;
+  object-fit: contain;
 }
 
+.relative{
+  position: relative;
+ 
+}
+
+.pc-out{
+  width: 100%;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .pc-next-btn-1{
   position: absolute;
-  width: 24vw;
-  height: 11vw;
-  bottom: 2vw;
-  left: calc(50% - 12vw);
+  width: 26%;
+  height: 20%;
+  bottom: 3%;
+  left: 37%;
   cursor: pointer;
+  
 }
 .pc-next-btn-2-1{
   position: absolute;
-  width: 22vw;
-  height: 48vw;
-  top: 5vw;
-  left: calc(16% - 10vw);
+  width: 21.5%;
+  height: 82.7%;
+  top: 9.4%;
+  left: 6%;
+  border-radius: 17px;
   cursor: pointer;
   rotate: 170deg;
+  background-color: rgba(34, 146, 183, 0.1);
+  transition: all 0.3s ease;
 }
 .pc-next-btn-2-2{
   position: absolute;
-  width: 22vw;
-  height: 48vw;
-  top: 5vw;
-  right: calc(16% - 10vw);
+  width: 21.5%;
+  height: 82.7%;
+  top: 9.4%;
+  right: 6%;
+  border-radius: 17px;
   cursor: pointer;
   rotate: 10deg;
+  background-color: rgba(34, 146, 183, 0.1);
+  transition: all 0.3s ease;
+}
+
+.pc-next-btn-2-1:hover, .pc-next-btn-2-2:hover{
+  background-color: rgba(34, 146, 183, 0.3);
+  box-shadow: 0 0 20px #2292b7, 0 0 40px rgba(34, 146, 183, 0.5);
+  transform: scale(1.02);
 }
 .pc-next-btn-3-1{
   position: absolute;
-  width: 17vw;
-  height: 10vw;
-  top: 11vw;
-  right: calc(35% - 8vw);
+  width: 17%;
+  height: 17%;
+  top: 22%;
+  right: 27%;
   cursor: pointer;
-  rotate: 19deg;
+  rotate: 14deg;
 }
 .pc-next-btn-3-2{
   position: absolute;
-  width: 17vw;
-  height: 10vw;
-  top: 11vw;
-  right: calc(14.5% - 8vw);
+  width: 17%;
+  height: 17%;
+  top: 22%;
+  right: 6.5%;
   cursor: pointer;
-  rotate: 19deg;
+  rotate: 14deg;
 }
 
 .mb-next-btn-1{
