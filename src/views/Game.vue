@@ -19,7 +19,7 @@
             v-for="(path, index) in levelConfig.paths"
             :key="index"
             :d="path.d"
-            stroke="transparent" 
+              stroke="transparent"
             stroke-width="1" 
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -139,6 +139,11 @@ export default {
       countdown: 0,
       // 滾動動畫
       scrollAnimationId: null,
+      // 座標轉換緩存
+      cachedSvgRect: null,
+      cachedScaleX: 1,
+      cachedScaleY: 1,
+      svgRectCacheTime: 0,
 
       loading: true,
     }
@@ -249,19 +254,6 @@ export default {
     window.removeEventListener('resize', this.handleResize);
   },
   methods: {
-    // 節流函數，限制函數執行頻率
-    throttle(func, limit) {
-      let inThrottle;
-      return function() {
-        const args = arguments;
-        const context = this;
-        if (!inThrottle) {
-          func.apply(context, args);
-          inThrottle = true;
-          setTimeout(() => inThrottle = false, limit);
-        }
-      }
-    },
     
     setCandyImage() {
       // 根據選擇的糖果設置對應的圖片
@@ -277,19 +269,15 @@ export default {
   
     
     setupEventListeners() {
-      // 創建throttled函數
-      this.throttledMouseMove = this.throttle(this.handleMove, 16); // 60fps
-      this.throttledTouchMove = this.throttle(this.handleTouchMove, 16); // 60fps
-      
-      // 滑鼠事件 - 優化配置，使用throttle減少事件頻率
+      // 移除節流限制，直接使用原始事件處理函數以提升響應性
       this.gameArea.addEventListener('mousedown', this.handleStart, { passive: false });
-      this.gameArea.addEventListener('mousemove', this.throttledMouseMove, { passive: false });
+      this.gameArea.addEventListener('mousemove', this.handleMove, { passive: false });
       this.gameArea.addEventListener('mouseup', this.handleEnd, { passive: false });
       this.gameArea.addEventListener('mouseleave', this.handleEnd, { passive: false });
       
       // 觸控事件
       this.gameArea.addEventListener('touchstart', this.handleTouchStart, { passive: false });
-      this.gameArea.addEventListener('touchmove', this.throttledTouchMove, { passive: false });
+      this.gameArea.addEventListener('touchmove', this.handleTouchMove, { passive: false });
       this.gameArea.addEventListener('touchend', this.handleEnd, { passive: false });
       
       // 防止右鍵選單
@@ -298,11 +286,11 @@ export default {
     
     removeEventListeners() {
       this.gameArea.removeEventListener('mousedown', this.handleStart);
-      this.gameArea.removeEventListener('mousemove', this.throttledMouseMove);
+      this.gameArea.removeEventListener('mousemove', this.handleMove);
       this.gameArea.removeEventListener('mouseup', this.handleEnd);
       this.gameArea.removeEventListener('mouseleave', this.handleEnd);
       this.gameArea.removeEventListener('touchstart', this.handleTouchStart);
-      this.gameArea.removeEventListener('touchmove', this.throttledTouchMove);
+      this.gameArea.removeEventListener('touchmove', this.handleTouchMove);
       this.gameArea.removeEventListener('touchend', this.handleEnd);
       this.gameArea.removeEventListener('contextmenu', (e) => e.preventDefault());
     },
@@ -383,38 +371,36 @@ export default {
       const clampedX = Math.max(0, Math.min(this.levelConfig.svgWidth, x));
       const clampedY = Math.max(0, Math.min(this.levelConfig.svgHeight + 500, y)); // 增加到底部500px以確保可以到達終點
       
-      // 調試信息（可以在開發時啟用）
-      if (this.gameState === 'playing' && this.isMouseDown) {
-        console.log(`拖動位置: 原始(${x.toFixed(1)}, ${y.toFixed(1)}) -> 限制後(${clampedX.toFixed(1)}, ${clampedY.toFixed(1)})`);
-        console.log(`SVG尺寸: ${this.levelConfig.svgWidth} x ${this.levelConfig.svgHeight}`);
-        console.log(`終點位置: (${this.levelConfig.endZone.x}, ${this.levelConfig.endZone.y})`);
-        console.log(`距離終點: ${Math.abs(clampedY - this.levelConfig.endZone.y).toFixed(1)}px`);
-        console.log(`頁面滾動位置: ${window.scrollY}px`);
-        console.log(`視窗高度: ${window.innerHeight}px`);
-      }
-      
       // 立即更新位置，提升響應性
       this.playerPosition = { x: clampedX, y: clampedY };
       
       // 處理頁面自動滾動
       this.handleAutoScroll(clampedY);
       
-      // 將非關鍵計算移到下一幀執行，但保持位置更新的即時性
+      // 使用更高效的碰撞檢測機制
+      this.scheduleCollisionCheck(clampedX, clampedY);
+    },
+    
+    // 新增：高效的碰撞檢測調度
+    scheduleCollisionCheck(x, y) {
+      // 如果已經有待處理的檢測，取消它
       if (this.animationFrameId) {
         cancelAnimationFrame(this.animationFrameId);
       }
+      
+      // 立即執行碰撞檢測，不使用延遲
       this.animationFrameId = requestAnimationFrame(() => {
-        // 碰撞檢測 - 進一步降低頻率以提升性能
+        // 進一步提高碰撞檢測頻率以提升靈敏度
         const now = Date.now();
-        if (now - this.lastCollisionCheck > 150) {
+        if (now - this.lastCollisionCheck > 30) { // 從50ms降低到30ms
           this.lastCollisionCheck = now;
           
-          if (this.checkCollision(clampedX, clampedY)) {
+          if (this.checkCollision(x, y)) {
             this.handleCollision();
             return;
           }
           
-          if (this.checkWinCondition(clampedX, clampedY)) {
+          if (this.checkWinCondition(x, y)) {
             this.winGame();
             return;
           }
@@ -619,6 +605,9 @@ export default {
       // 處理窗口大小變化
       if (this.gameArea) {
         this.adjustGameParameters();
+        // 清除座標轉換緩存，強制重新計算
+        this.cachedSvgRect = null;
+        this.svgRectCacheTime = 0;
       }
     },
     
@@ -645,42 +634,60 @@ export default {
     },
     
     
-    // 統一的座標轉換方法 - 修復滾動時的座標問題
+    // 統一的座標轉換方法 - 優化性能
     convertToSVGCoordinates(e) {
-      // 每次拖動時都重新獲取SVG矩形，確保座標準確性
-      const svgRect = this.svgElement.getBoundingClientRect();
+      // 緩存SVG矩形信息，避免重複計算
+      if (!this.cachedSvgRect || this.svgRectCacheTime < Date.now() - 100) {
+        this.cachedSvgRect = this.svgElement.getBoundingClientRect();
+        this.cachedScaleX = this.levelConfig.svgWidth / this.cachedSvgRect.width;
+        this.cachedScaleY = this.levelConfig.svgHeight / this.cachedSvgRect.height;
+        this.svgRectCacheTime = Date.now();
+      }
       
-      // 預計算比例，避免重複除法運算
-      const scaleX = this.levelConfig.svgWidth / svgRect.width;
-      const scaleY = this.levelConfig.svgHeight / svgRect.height;
-      
-      // 直接計算，避免中間變量
-      const x = (e.clientX - svgRect.left) * scaleX;
-      const y = (e.clientY - svgRect.top) * scaleY;
+      // 使用緩存的比例進行快速計算
+      const x = (e.clientX - this.cachedSvgRect.left) * this.cachedScaleX;
+      const y = (e.clientY - this.cachedSvgRect.top) * this.cachedScaleY;
       
       return { x, y };
     },
     
     
     checkCollision(x, y) {
-      // 碰撞檢測範圍與元件大小一致，根據遊戲區域調整精度
+      // 平衡性能和靈敏度的碰撞檢測
       const blockSize = 45; // 草莓糖果大小
-      const pathWidth = 1; // 路徑寬度 (與SVG中的stroke-width一致)
-      const tolerance = (blockSize / 2) + (pathWidth / 2); // 區塊半徑 + 路徑半寬
-      const toleranceSquared = tolerance * tolerance; // 預計算平方值，避免開方運算
+      const pathWidth = 1; // 路徑寬度
+      const tolerance = (blockSize / 2) + (pathWidth / 2);
+      const toleranceSquared = tolerance * tolerance;
       
+      // 提升檢測密度以增加靈敏度
       for (let path of this.pathElements) {
         const pathLength = path.getTotalLength();
-        const steps = Math.floor(pathLength / 15); // 調整檢測密度以匹配較窄的路徑
+        // 增加檢測點數量，減少間距以提升靈敏度
+        const steps = Math.min(50, Math.floor(pathLength / 12)); // 最多50個檢測點，間距12px
         
         for (let i = 0; i <= steps; i++) {
           const point = path.getPointAtLength((i / steps) * pathLength);
           const dx = x - point.x;
           const dy = y - point.y;
-          const distanceSquared = dx * dx + dy * dy; // 使用平方距離比較，避免開方運算
+          const distanceSquared = dx * dx + dy * dy;
           
           if (distanceSquared < toleranceSquared) {
             return true;
+          }
+        }
+        
+        // 額外檢測：在路徑的關鍵轉折點附近增加更多檢測點
+        if (pathLength > 200) {
+          const keyPoints = [0.25, 0.5, 0.75]; // 路徑的25%, 50%, 75%位置
+          for (let ratio of keyPoints) {
+            const point = path.getPointAtLength(pathLength * ratio);
+            const dx = x - point.x;
+            const dy = y - point.y;
+            const distanceSquared = dx * dx + dy * dy;
+            
+            if (distanceSquared < toleranceSquared) {
+              return true;
+            }
           }
         }
       }
