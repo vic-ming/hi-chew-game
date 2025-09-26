@@ -19,7 +19,7 @@
             v-for="(path, index) in levelConfig.paths"
             :key="index"
             :d="path.d"
-            stroke="#ff0000" 
+            stroke="transparent" 
             stroke-width="3" 
             stroke-linecap="round"
             stroke-linejoin="round"
