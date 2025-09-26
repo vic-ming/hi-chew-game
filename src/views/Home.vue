@@ -22,15 +22,23 @@
       <div class="pc-view">
         <div class="relative pc-out">
           <img class="pc-img" src="@/assets/images/pc-step-3.webp" alt="">
-          <div class="pc-next-btn-3-1" @click="stepNext(1)"></div>
-          <div class="pc-next-btn-3-2" @click="stepNext(2)"></div>
+          <div class="pc-next-btn-3-1" @click="stepNext(1)">
+            <img src="@/assets/candy_grape.webp" alt="">
+          </div>
+          <div class="pc-next-btn-3-2" @click="stepNext(2)">
+            <img src="@/assets/candy_strawberry.webp" alt="">
+          </div>
         </div>
       </div>
       <div class="mb-view">
         <div class="relative">
           <img src="@/assets/images/mb-step-3.webp" alt="">
-          <div class="mb-next-btn-3-1" @click="stepNext(1)"></div>
-          <div class="mb-next-btn-3-2" @click="stepNext(2)"></div>
+          <div class="mb-next-btn-3-1" @click="stepNext(1)">
+            <img src="@/assets/candy_grape.webp" alt="">
+          </div>
+          <div class="mb-next-btn-3-2" @click="stepNext(2)">
+            <img src="@/assets/candy_strawberry.webp" alt="">
+          </div>
         </div>
       </div>
     </div>
@@ -155,7 +163,7 @@ export default {
   overflow: auto;
   background-image: url('../assets/images/pc-bg.svg');
   background-size: cover;
-  background-position: -5px -5px;
+  background-position: -1px ;
   background-repeat: no-repeat;
 }
 
@@ -173,7 +181,7 @@ export default {
   height: auto;
   
   object-fit: contain;
-  cursor: pointer;
+  /* cursor: pointer; */
 }
 
 .pc-img{
@@ -229,30 +237,43 @@ export default {
   transition: all 0.3s ease;
 }
 
-.pc-next-btn-2-1:hover, .pc-next-btn-2-2:hover{
+.pc-next-btn-2-1:hover, .pc-next-btn-2-2:hover,.mb-next-btn-2-1:hover, .mb-next-btn-2-2:hover{
   background-color: rgba(34, 146, 183, 0.3);
   box-shadow: 0 0 20px #2292b7, 0 0 40px rgba(34, 146, 183, 0.5);
   transform: scale(1.02);
 }
+@keyframes wiggle {
+  0%, 100% { transform: rotate(14deg); }
+  50% { transform: rotate(0deg); }
+  
+}
+
 .pc-next-btn-3-1{
   position: absolute;
   width: 17%;
   height: 17%;
   top: 22%;
-  right: 27%;
+  right: 25%;
   cursor: pointer;
   rotate: 14deg;
+  animation: wiggle 1.5s ease-in-out infinite;
 }
+
 .pc-next-btn-3-2{
   position: absolute;
   width: 17%;
   height: 17%;
   top: 22%;
-  right: 6.5%;
+  right: 4.5%;
   cursor: pointer;
   rotate: 14deg;
+  animation: wiggle 1.5s ease-in-out infinite;
 }
-
+.pc-next-btn-3-1 img, .pc-next-btn-3-2 img{
+  position: relative;
+  bottom: 11%;
+  rotate: -5deg;
+}
 .mb-next-btn-1{
   position: absolute;
   width: 67%;
@@ -262,42 +283,59 @@ export default {
   cursor: pointer;
   
 }
+
+@keyframes wiggle-mb {
+  0%, 100% { transform: rotate(14deg); }
+  50% { transform: rotate(0deg); }
+  
+}
+
 .mb-next-btn-3-1{
   position: absolute;
   width: 38%;
-  height: 9%;
-  bottom: 34%;
-  left: 9%;
+  height: 9.5%;
+  bottom: 30%;
+  left: 8%;
   cursor: pointer;
-  rotate: 19deg;
+  rotate: 14deg;
+  animation: wiggle-mb 1.5s ease-in-out infinite;
 }
 .mb-next-btn-3-2{
   position: absolute;
   width: 38%;
-  height: 9%;
-  bottom: 34%;
-  right: 8%;
+  height: 9.5%;
+  bottom: 30%;
+  right: 6%;
   cursor: pointer;
-  rotate: 19deg;
+  rotate: 14deg;
+  animation: wiggle-mb 1.5s ease-in-out infinite;
 }
+.mb-next-btn-3-1 img, .mb-next-btn-3-2 img{
+  position: relative;
+  bottom: 13%;
+  rotate: -7deg;
+}
+
 .mb-next-btn-2-1{
   position: absolute;
-  width: 44%;
-  height: 43%;
-  bottom: 32%;
-  left: 11%;
+  width: 43.4%;
+  height: 43.1%;
+  bottom: 32.2%;
+  left: 11.2%;
   cursor: pointer;
-  rotate: -11deg; 
+  rotate: -10deg;
   z-index: 1;
+  border-radius: 17px;
 }
 .mb-next-btn-2-2{
   position: absolute;
-  width: 44%;
-  height: 43%;
-  bottom: 4%;
+  width: 43.4%;
+  height: 43.1%;
+  bottom: 4.2%;
   right: 12.5%;
   cursor: pointer;
-  rotate: 11deg; 
+  rotate: 10deg;
+  border-radius: 29px;
 }
 
 

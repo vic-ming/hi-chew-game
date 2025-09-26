@@ -11,7 +11,7 @@
     <div class="game-container" :class="{ 'level-a': selectedLevel === 'a', 'level-b': selectedLevel === 'b' }">
       
       <!-- 遊戲區域 -->
-      <div class="game-area" ref="gameArea">
+      <div v-show="!loading" class="game-area" ref="gameArea">
         <!-- SVG 路徑 -->
         <svg class="line-svg" :viewBox="levelConfig.viewBox" ref="svgElement">
           <!-- 動態路徑，根據關卡顯示不同路徑 -->
@@ -20,7 +20,7 @@
             :key="index"
             :d="path.d"
             stroke="transparent" 
-            stroke-width="3" 
+            stroke-width="1" 
             stroke-linecap="round"
             stroke-linejoin="round"
             fill="none"
@@ -92,8 +92,8 @@
 </template>
 
 <script>
-import candyStrawberry from '../assets/candy_strawberry.png'
-import candyGrape from '../assets/candy_grape.png'
+import candyStrawberry from '../assets/candy_strawberry.webp'
+import candyGrape from '../assets/candy_grape.webp'
 import lightningImage from '../assets/lightning.png'
 import bgmSound from '../assets/mp3/bgm.mp3'
 import successSound from '../assets/mp3/success.mp3'
@@ -105,8 +105,6 @@ export default {
   data() {
     return {
       gameState: 'playing', // ready, playing, gameOver, completed
-      score: 0,
-      bestScore: parseInt(localStorage.getItem('bestScore')) || 0,
       lives: 3, // 生命值，初始為3條命
       playerPosition: { x: 312, y: 80 }, // 起點位置 (將在mounted時根據關卡更新)
       isShaking: false,
@@ -141,6 +139,8 @@ export default {
       countdown: 0,
       // 滾動動畫
       scrollAnimationId: null,
+
+      loading: true,
     }
   },
   computed: {
@@ -218,6 +218,10 @@ export default {
     
     // 添加窗口大小變化監聽
     window.addEventListener('resize', this.handleResize);
+
+    setTimeout(() => {
+      this.loading = false;
+    }, 2000);
   },
   beforeUnmount() {
     this.removeEventListeners();
@@ -661,7 +665,7 @@ export default {
     checkCollision(x, y) {
       // 碰撞檢測範圍與元件大小一致，根據遊戲區域調整精度
       const blockSize = 45; // 草莓糖果大小
-      const pathWidth = 3; // 路徑寬度 (與SVG中的stroke-width一致)
+      const pathWidth = 1; // 路徑寬度 (與SVG中的stroke-width一致)
       const tolerance = (blockSize / 2) + (pathWidth / 2); // 區塊半徑 + 路徑半寬
       const toleranceSquared = tolerance * tolerance; // 預計算平方值，避免開方運算
       
@@ -745,11 +749,7 @@ export default {
         clearInterval(this.scoreInterval);
       }
       
-      // 更新最佳分數
-      if (this.score > this.bestScore) {
-        this.bestScore = this.score;
-        localStorage.setItem('bestScore', this.bestScore.toString());
-      }
+
       
       // 停止震動效果
       setTimeout(() => {
@@ -790,15 +790,6 @@ export default {
       
       // 播放成功音效
       this.playSound(this.successAudio);
-      
-      // 勝利獎勵分數
-      this.score += 100;
-      
-      // 更新最佳分數
-      if (this.score > this.bestScore) {
-        this.bestScore = this.score;
-        localStorage.setItem('bestScore', this.bestScore.toString());
-      }
     }
   }
 }
