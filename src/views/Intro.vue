@@ -422,7 +422,8 @@ export default {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 20px;
   padding: 0;
-  max-width: 500px;
+  max-width: 800px;
+  min-width: 500px;
   width: 90%;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   animation: slideIn 0.3s ease-out;
@@ -441,7 +442,7 @@ export default {
 .modal-header h3 {
   color: white;
   margin: 0;
-  font-size: 20px;
+  font-size: 35px;
   font-weight: bold;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
@@ -450,11 +451,11 @@ export default {
   background: none;
   border: none;
   color: white;
-  font-size: 24px;
+  font-size: 44px;
   cursor: pointer;
   padding: 0;
-  width: 30px;
-  height: 30px;
+  width: 50px;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -473,7 +474,7 @@ export default {
 
 .modal-body p {
   margin: 0 0 15px 0;
-  font-size: 16px;
+  font-size: 30px;
   line-height: 1.6;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
@@ -492,9 +493,10 @@ export default {
   background: linear-gradient(45deg, #ff6b6b, #ee5a24);
   color: white;
   border: none;
+  margin-top: 60px;
   padding: 12px 30px;
   border-radius: 25px;
-  font-size: 16px;
+  font-size: 30px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -553,7 +555,8 @@ export default {
     
     /* 手機版彈窗樣式 */
     .modal-content {
-      max-width: 95%;
+      max-width: 90%;
+      min-width: 90%;
       margin: 20px;
     }
     
@@ -562,7 +565,7 @@ export default {
     }
     
     .modal-header h3 {
-      font-size: 18px;
+      font-size: 23px;
     }
     
     .modal-body {
@@ -570,7 +573,7 @@ export default {
     }
     
     .modal-body p {
-      font-size: 14px;
+      font-size: 18px;
     }
     
     .modal-footer {
@@ -578,8 +581,9 @@ export default {
     }
     
     .confirm-btn {
+      margin-top: 20px;
       padding: 10px 25px;
-      font-size: 14px;
+      font-size: 18px;
     }
 }
 </style>

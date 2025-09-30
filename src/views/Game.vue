@@ -127,6 +127,7 @@
 </template>
 
 <script>
+import { useRouter } from 'vue-router'
 import candyStrawberry from '../assets/candy_strawberry.webp'
 import candyGrape from '../assets/candy_grape.webp'
 import lightningImage from '../assets/lightning.png'
@@ -137,6 +138,12 @@ import failSound from '../assets/mp3/fail.mp3'
 
 export default {
   name: 'Game',
+  setup() {
+    const router = useRouter()
+    return {
+      router
+    }
+  },
   data() {
     return {
       gameState: 'playing', // ready, playing, gameOver, completed
@@ -912,7 +919,7 @@ export default {
           uid: this.uid
         };
 
-        const response = await fetch('https://10year.knowdm.com.tw/gameResult', {
+        const response = await fetch('https://hi-chew.com.tw/gameResult', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -920,13 +927,14 @@ export default {
           body: JSON.stringify(gameData)
         });
 
-        if (response.ok) {
-          console.log('遊戲結果已成功記錄');
-        } else {
-          console.error('記錄遊戲結果失敗:', response.statusText);
-        }
+        setTimeout(() => {
+          this.router.push({path: '/'})
+        }, 5000);
       } catch (error) {
         console.error('API調用錯誤:', error);
+        setTimeout(() => {
+          this.router.push({path: '/'})
+        }, 5000);
       }
     }
   }
