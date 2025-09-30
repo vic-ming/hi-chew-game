@@ -44,7 +44,7 @@
             :key="index"
             :d="path.d"
             stroke="transparent"
-            stroke-width="1" 
+            stroke-width="2" 
             stroke-linecap="round"
             stroke-linejoin="round"
             fill="none"
@@ -85,14 +85,25 @@
             class="lightning-effect"
           />
           
-          <!-- 調試用：顯示碰撞檢測範圍 -->
+          <!-- 調試用：顯示路徑邊界檢測範圍 -->
+          <circle 
+            v-if="gameState === 'playing'"
+            :cx="playerPosition.x" 
+            :cy="playerPosition.y" 
+            r="57.5" 
+            fill="none" 
+            stroke="transparent" 
+            stroke-width="2"
+            class="debug-circle"
+          />
+          <!-- 調試用：顯示路徑線條碰撞檢測範圍 -->
           <circle 
             v-if="gameState === 'playing'"
             :cx="playerPosition.x" 
             :cy="playerPosition.y" 
             r="27.5" 
             fill="none" 
-            stroke="rgba(255,0,0,0.5)" 
+            stroke="rgba(255,0,0,0.3)" 
             stroke-width="2"
             class="debug-circle"
           />
@@ -295,35 +306,43 @@ export default {
   
     
     setupEventListeners() {
-      // 移除節流限制，直接使用原始事件處理函數以提升響應性
-      this.gameArea.addEventListener('mousedown', this.handleStart, { passive: false });
-      this.gameArea.addEventListener('mousemove', this.handleMove, { passive: false });
-      this.gameArea.addEventListener('mouseup', this.handleEnd, { passive: false });
-      this.gameArea.addEventListener('mouseleave', this.handleEnd, { passive: false });
+      // 優化事件處理：使用更高優先級的事件監聽以提升響應性
+      this.gameArea.addEventListener('mousedown', this.handleStart, { passive: false, capture: true });
+      this.gameArea.addEventListener('mousemove', this.handleMove, { passive: false, capture: true });
+      this.gameArea.addEventListener('mouseup', this.handleEnd, { passive: false, capture: true });
+      this.gameArea.addEventListener('mouseleave', this.handleEnd, { passive: false, capture: true });
       
-      // 觸控事件
-      this.gameArea.addEventListener('touchstart', this.handleTouchStart, { passive: false });
-      this.gameArea.addEventListener('touchmove', this.handleTouchMove, { passive: false });
-      this.gameArea.addEventListener('touchend', this.handleEnd, { passive: false });
+      // 觸控事件：增加更多觸控事件類型以提升移動設備響應性
+      this.gameArea.addEventListener('touchstart', this.handleTouchStart, { passive: false, capture: true });
+      this.gameArea.addEventListener('touchmove', this.handleTouchMove, { passive: false, capture: true });
+      this.gameArea.addEventListener('touchend', this.handleEnd, { passive: false, capture: true });
+      this.gameArea.addEventListener('touchcancel', this.handleEnd, { passive: false, capture: true });
       
-      // 防止右鍵選單
+      // 防止右鍵選單和默認行為
       this.gameArea.addEventListener('contextmenu', (e) => e.preventDefault());
+      this.gameArea.addEventListener('selectstart', (e) => e.preventDefault());
     },
     
     removeEventListeners() {
-      this.gameArea.removeEventListener('mousedown', this.handleStart);
-      this.gameArea.removeEventListener('mousemove', this.handleMove);
-      this.gameArea.removeEventListener('mouseup', this.handleEnd);
-      this.gameArea.removeEventListener('mouseleave', this.handleEnd);
-      this.gameArea.removeEventListener('touchstart', this.handleTouchStart);
-      this.gameArea.removeEventListener('touchmove', this.handleTouchMove);
-      this.gameArea.removeEventListener('touchend', this.handleEnd);
+      this.gameArea.removeEventListener('mousedown', this.handleStart, { capture: true });
+      this.gameArea.removeEventListener('mousemove', this.handleMove, { capture: true });
+      this.gameArea.removeEventListener('mouseup', this.handleEnd, { capture: true });
+      this.gameArea.removeEventListener('mouseleave', this.handleEnd, { capture: true });
+      this.gameArea.removeEventListener('touchstart', this.handleTouchStart, { capture: true });
+      this.gameArea.removeEventListener('touchmove', this.handleTouchMove, { capture: true });
+      this.gameArea.removeEventListener('touchend', this.handleEnd, { capture: true });
+      this.gameArea.removeEventListener('touchcancel', this.handleEnd, { capture: true });
       this.gameArea.removeEventListener('contextmenu', (e) => e.preventDefault());
+      this.gameArea.removeEventListener('selectstart', (e) => e.preventDefault());
     },
     
     initializePaths() {
       // 獲取路徑元素
       this.pathElements = this.svgElement.querySelectorAll('path');
+      console.log('初始化路徑元素，找到', this.pathElements.length, '個路徑');
+      this.pathElements.forEach((path, index) => {
+        console.log(`路徑 ${index}:`, path.getAttribute('class'), '長度:', path.getTotalLength());
+      });
     },
     
     handleStart(e) {
@@ -397,14 +416,24 @@ export default {
       const clampedX = Math.max(0, Math.min(this.levelConfig.svgWidth, x));
       const clampedY = Math.max(0, Math.min(this.levelConfig.svgHeight + 500, y)); // 增加到底部500px以確保可以到達終點
       
+      // 使用完整的碰撞檢測方法
+      if (this.checkCollision(clampedX, clampedY)) {
+        // 如果發生碰撞，觸發碰撞處理
+        this.handleCollision();
+        return;
+      }
+      
       // 立即更新位置，提升響應性
       this.playerPosition = { x: clampedX, y: clampedY };
       
       // 處理頁面自動滾動
       this.handleAutoScroll(clampedY);
       
-      // 使用更高效的碰撞檢測機制
-      this.scheduleCollisionCheck(clampedX, clampedY);
+      // 檢查勝利條件
+      if (this.checkWinCondition(clampedX, clampedY)) {
+        this.winGame();
+        return;
+      }
     },
     
     // 新增：高效的碰撞檢測調度
@@ -416,20 +445,17 @@ export default {
       
       // 立即執行碰撞檢測，不使用延遲
       this.animationFrameId = requestAnimationFrame(() => {
-        // 進一步提高碰撞檢測頻率以提升靈敏度
-        const now = Date.now();
-        if (now - this.lastCollisionCheck > 10) { // 從30ms降低到10ms
-          this.lastCollisionCheck = now;
-          
-          if (this.checkCollision(x, y)) {
-            this.handleCollision();
-            return;
-          }
-          
-          if (this.checkWinCondition(x, y)) {
-            this.winGame();
-            return;
-          }
+        // 移除時間限制，每次拖動都進行碰撞檢測以確保不遺漏
+        this.lastCollisionCheck = Date.now();
+        
+        if (this.checkCollision(x, y)) {
+          this.handleCollision();
+          return;
+        }
+        
+        if (this.checkWinCondition(x, y)) {
+          this.winGame();
+          return;
         }
       });
     },
@@ -679,39 +705,110 @@ export default {
     
     
     checkCollision(x, y) {
-      // 平衡性能和靈敏度的碰撞檢測
-      const blockSize = 45; // 草莓糖果大小
-      const pathWidth = 1; // 路徑寬度
-      const tolerance = (blockSize / 2) + (pathWidth / 2);
-      const toleranceSquared = tolerance * tolerance;
+      // 檢查兩種碰撞情況：
+      // 1. 糖果是否超出路徑邊界
+      // 2. 糖果是否碰撞到路徑線條
+      const boundaryCollision = !this.isWithinPathBoundary(x, y);
+      const pathCollision = this.isCollidingWithPath(x, y);
       
-      // 提升檢測密度以增加靈敏度
+      if (Math.abs(x - 694) < 50 && Math.abs(y - 200) < 50) {
+        console.log('checkCollision 被調用 - 位置:', x, y, '邊界碰撞:', boundaryCollision, '路徑碰撞:', pathCollision);
+      }
+      
+      return boundaryCollision || pathCollision;
+    },
+    
+    // 新增：檢查點是否在路徑邊界內
+    isWithinPathBoundary(x, y) {
+      const blockSize = 45; // 糖果大小
+      const pathWidth = 70; // 路徑安全寬度（兩條線之間的距離），增加10px
+      const tolerance = (pathWidth / 2) + (blockSize / 2); // 允許糖果在路徑中心線兩側的範圍
+      
+      // 檢查是否至少有一條路徑在容錯範圍內
       for (let path of this.pathElements) {
         const pathLength = path.getTotalLength();
-        // 增加檢測點數量，減少間距以提升靈敏度
-        const steps = Math.min(50, Math.floor(pathLength / 8)); // 最多50個檢測點，間距8px
+        
+        // 沿著路徑檢查多個點，確保糖果在路徑的安全範圍內
+        const steps = Math.min(100, Math.floor(pathLength / 5)); // 每5px一個檢測點
+        
+        for (let i = 0; i <= steps; i++) {
+          const point = path.getPointAtLength((i / steps) * pathLength);
+          const dx = x - point.x;
+          const dy = y - point.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          // 如果糖果距離路徑中心線在安全範圍內，則認為是安全的
+          if (distance <= tolerance) {
+            return true;
+          }
+        }
+        
+        // 額外檢查：在路徑的關鍵位置進行更密集的檢測
+        if (pathLength > 200) {
+          const keyPoints = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9];
+          for (let ratio of keyPoints) {
+            const point = path.getPointAtLength(pathLength * ratio);
+            const dx = x - point.x;
+            const dy = y - point.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance <= tolerance) {
+              return true;
+            }
+          }
+        }
+      }
+      
+      // 如果糖果不在任何路徑的安全範圍內，則認為是碰撞
+      return false;
+    },
+    
+    // 檢查糖果是否碰撞到路徑線條
+    isCollidingWithPath(x, y) {
+      const blockSize = 45; // 糖果大小
+      const pathWidth = 2; // 路徑線條寬度
+      const tolerance = (blockSize / 2) + (pathWidth / 2) + 5; // 碰撞檢測容錯範圍，減少到5px讓紅色圓圈更小
+      const toleranceSquared = tolerance * tolerance;
+      
+      // 只在特定位置顯示調試信息
+      if (Math.abs(x - 694) < 50 && Math.abs(y - 200) < 50) {
+        console.log('測試碰撞檢測 - 糖果位置:', x, y, '容錯範圍:', tolerance);
+      }
+      
+      // 檢查是否碰撞到任何路徑線條
+      for (let pathIndex = 0; pathIndex < this.pathElements.length; pathIndex++) {
+        const path = this.pathElements[pathIndex];
+        const pathLength = path.getTotalLength();
+        
+        // 沿著路徑檢查多個點，檢測糖果是否碰撞到路徑線條
+        const steps = Math.min(150, Math.floor(pathLength / 2)); // 每2px一個檢測點，增加檢測密度
         
         for (let i = 0; i <= steps; i++) {
           const point = path.getPointAtLength((i / steps) * pathLength);
           const dx = x - point.x;
           const dy = y - point.y;
           const distanceSquared = dx * dx + dy * dy;
+          const distance = Math.sqrt(distanceSquared);
           
+          // 如果糖果距離路徑線條太近，則認為是碰撞
           if (distanceSquared < toleranceSquared) {
+            console.log(`碰撞到路徑 ${pathIndex}！距離: ${distance.toFixed(2)}, 容錯範圍: ${tolerance}, 檢測點: ${i}/${steps}`);
             return true;
           }
         }
         
-        // 額外檢測：在路徑的關鍵轉折點附近增加更多檢測點
-        if (pathLength > 200) {
-          const keyPoints = [0.25, 0.5, 0.75]; // 路徑的25%, 50%, 75%位置
+        // 額外密集檢測：在路徑的關鍵位置進行更密集的檢測
+        if (pathLength > 100) {
+          const keyPoints = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9];
           for (let ratio of keyPoints) {
             const point = path.getPointAtLength(pathLength * ratio);
             const dx = x - point.x;
             const dy = y - point.y;
             const distanceSquared = dx * dx + dy * dy;
+            const distance = Math.sqrt(distanceSquared);
             
             if (distanceSquared < toleranceSquared) {
+              console.log(`碰撞到路徑 ${pathIndex}（關鍵點）！距離: ${distance.toFixed(2)}, 容錯範圍: ${tolerance}`);
               return true;
             }
           }
