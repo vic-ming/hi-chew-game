@@ -3,10 +3,34 @@
     <img v-if="selectedLevel === 'a'" src="@/assets/images/game_a_bg.webp" alt="game_bg" class="game_bg-img">
     <img v-if="selectedLevel === 'b'" src="@/assets/images/game_b_bg.webp" alt="game_bg" class="game_bg-img">
     <div class="heart-container">
-      <img v-if="lives === 3" src="@/assets/images/heart-3.png" class="heart-img">
-      <img v-if="lives === 2" src="@/assets/images/heart-2.png" class="heart-img">
-      <img v-if="lives === 1" src="@/assets/images/heart-1.png" class="heart-img">
-      <img v-if="lives === 0" src="@/assets/images/heart-0.png" class="heart-img">      
+      <div v-if="lives === 6">
+        <img src="@/assets/images/heart-3.png" class="heart-img">
+        <img src="@/assets/images/heart-3.png" class="heart-img">
+      </div>
+      <div v-if="lives === 5">
+        <img src="@/assets/images/heart-3.png" class="heart-img">
+        <img src="@/assets/images/heart-2.png" class="heart-img">
+      </div>
+      <div v-if="lives === 4">
+        <img src="@/assets/images/heart-3.png" class="heart-img">
+        <img src="@/assets/images/heart-1.png" class="heart-img">
+      </div>
+      <div v-if="lives === 3">
+        <img src="@/assets/images/heart-3.png" class="heart-img">
+        <img src="@/assets/images/heart-0.png" class="heart-img">
+      </div>
+      <div v-if="lives === 2">
+        <img src="@/assets/images/heart-2.png" class="heart-img">
+        <img src="@/assets/images/heart-0.png" class="heart-img">
+      </div>
+      <div v-if="lives === 1">
+        <img src="@/assets/images/heart-1.png" class="heart-img">
+        <img src="@/assets/images/heart-0.png" class="heart-img">
+      </div>
+      <div v-if="lives === 0">
+        <img src="@/assets/images/heart-0.png" class="heart-img">
+        <img src="@/assets/images/heart-0.png" class="heart-img">
+      </div>
     </div>
     <div class="game-container" :class="{ 'level-a': selectedLevel === 'a', 'level-b': selectedLevel === 'b' }">
       
@@ -19,7 +43,7 @@
             v-for="(path, index) in levelConfig.paths"
             :key="index"
             :d="path.d"
-              stroke="transparent"
+            stroke="transparent"
             stroke-width="1" 
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -105,7 +129,7 @@ export default {
   data() {
     return {
       gameState: 'playing', // ready, playing, gameOver, completed
-      lives: 3, // 生命值，初始為3條命
+      lives: 6, // 生命值，初始為6條命
       playerPosition: { x: 312, y: 80 }, // 起點位置 (將在mounted時根據關卡更新)
       isShaking: false,
       gameArea: null,
@@ -539,7 +563,7 @@ export default {
     startGame() {
       this.gameState = 'playing';
       this.score = 0;
-      this.lives = 3; // 重置生命值為3
+      this.lives = 6; // 重置生命值為6
       this.playerPosition = { ...this.levelConfig.startPosition };
       this.gameStartTime = Date.now();
       this.showLightning = false; // 重置閃電效果
@@ -619,7 +643,7 @@ export default {
       }
       
       this.gameState = 'playing';
-      this.lives = 3; // 重置生命值為3
+      this.lives = 6; // 重置生命值為6
       this.playerPosition = { ...this.levelConfig.startPosition };
       this.isShaking = false;
       this.showLightning = false; // 重置閃電效果
@@ -822,11 +846,20 @@ export default {
   position: fixed;
   top: 10px;
   right: 10px;
-  width: 300px;
+  
   z-index: 10;
 }
+.heart-container div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.heart-container img:first-child {
+  position: relative;
+  left: 20px;
+}
 .heart-img {
-  width: 100%;
+  width: 300px;
   height: 100%;
 }
 
@@ -1110,8 +1143,11 @@ export default {
 /* 響應式設計 */
 @media (max-width: 768px) {
 
-  .heart-container {
-    width: 200px;
+  .heart-container img {
+    width: 150px;
+  }
+  .heart-container img:first-child {
+    left: 10px;
   }
 
   .game-controls {
