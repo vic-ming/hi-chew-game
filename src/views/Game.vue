@@ -90,7 +90,7 @@
             v-if="gameState === 'playing'"
             :cx="playerPosition.x" 
             :cy="playerPosition.y" 
-            r="57.5" 
+            r="70" 
             fill="none" 
             stroke="transparent" 
             stroke-width="2"
@@ -745,7 +745,7 @@ export default {
     // 新增：檢查點是否在路徑邊界內
     isWithinPathBoundary(x, y) {
       const blockSize = 45; // 糖果大小
-      const pathWidth = 70; // 路徑安全寬度（兩條線之間的距離），增加10px
+      const pathWidth = 85; // 路徑安全寬度（兩條線之間的距離），增加15px
       const tolerance = (pathWidth / 2) + (blockSize / 2); // 允許糖果在路徑中心線兩側的範圍
       
       // 檢查是否至少有一條路徑在容錯範圍內
