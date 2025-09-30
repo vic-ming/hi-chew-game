@@ -418,7 +418,7 @@ export default {
       this.animationFrameId = requestAnimationFrame(() => {
         // 進一步提高碰撞檢測頻率以提升靈敏度
         const now = Date.now();
-        if (now - this.lastCollisionCheck > 30) { // 從50ms降低到30ms
+        if (now - this.lastCollisionCheck > 10) { // 從30ms降低到10ms
           this.lastCollisionCheck = now;
           
           if (this.checkCollision(x, y)) {
@@ -689,7 +689,7 @@ export default {
       for (let path of this.pathElements) {
         const pathLength = path.getTotalLength();
         // 增加檢測點數量，減少間距以提升靈敏度
-        const steps = Math.min(50, Math.floor(pathLength / 12)); // 最多50個檢測點，間距12px
+        const steps = Math.min(50, Math.floor(pathLength / 8)); // 最多50個檢測點，間距8px
         
         for (let i = 0; i <= steps; i++) {
           const point = path.getPointAtLength((i / steps) * pathLength);
@@ -815,7 +815,7 @@ export default {
           uid: this.uid
         };
 
-        const response = await fetch('http://test/recordGame', {
+        const response = await fetch('https://10year.knowdm.com.tw/gameResult', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -1,5 +1,21 @@
 <template>
   <div class="home" @click="enableBGM" @mousemove="enableBGM">
+    <!-- 設備建議彈窗 -->
+    <div class="device-modal" v-if="showDeviceModal" @click="closeDeviceModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>建議使用電腦＆平板進行遊玩</h3>
+          <button class="close-btn" @click="closeDeviceModal">×</button>
+        </div>
+        <div class="modal-body">
+          <p>為了獲得最佳遊戲體驗，建議您使用電腦或平板設備進行遊戲，手機設備可能會影響遊戲操作和視覺效果。</p>
+        </div>
+        <div class="modal-footer">
+          <button class="confirm-btn" @click="closeDeviceModal">我知道了</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 遊戲說明 -->
     <div class="home-container" v-if="step === 1">
       <div class="pc-view">
@@ -84,7 +100,8 @@ export default {
         bgmStarted: false,
         selectedLevel: null,
         selectedCandy: null,
-        uid: null
+        uid: null,
+        showDeviceModal: true
     }
   },
   mounted() {
@@ -154,6 +171,10 @@ export default {
       this.enableBGM() // 任何交互都觸發BGM
       this.selectedCandy = _value
       this.step++
+    },
+    
+    closeDeviceModal() {
+      this.showDeviceModal = false
     }
   }
 }
@@ -382,6 +403,133 @@ export default {
   }
 }
 
+/* 設備建議彈窗樣式 */
+.device-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  padding: 0;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease-out;
+  overflow: hidden;
+}
+
+.modal-header {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-header h3 {
+  color: white;
+  margin: 0;
+  font-size: 20px;
+  font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.3s ease;
+}
+
+.close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.modal-body {
+  padding: 25px;
+  color: white;
+}
+
+.modal-body p {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  line-height: 1.6;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.modal-body p:last-child {
+  margin-bottom: 0;
+}
+
+.modal-footer {
+  padding: 20px 25px;
+  display: flex;
+  justify-content: center;
+}
+
+.confirm-btn {
+  background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+}
+
+.confirm-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+}
+
+.confirm-btn:active {
+  transform: translateY(0);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-50px) scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
 @media (max-width: 768px) {
     .home-container{
      display: block;
@@ -401,6 +549,37 @@ export default {
     .bgm-prompt-content {
       padding: 8px 12px;
       font-size: 12px;
+    }
+    
+    /* 手機版彈窗樣式 */
+    .modal-content {
+      max-width: 95%;
+      margin: 20px;
+    }
+    
+    .modal-header {
+      padding: 15px;
+    }
+    
+    .modal-header h3 {
+      font-size: 18px;
+    }
+    
+    .modal-body {
+      padding: 20px;
+    }
+    
+    .modal-body p {
+      font-size: 14px;
+    }
+    
+    .modal-footer {
+      padding: 15px 20px;
+    }
+    
+    .confirm-btn {
+      padding: 10px 25px;
+      font-size: 14px;
     }
 }
 </style>
