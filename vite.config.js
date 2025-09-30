@@ -13,5 +13,14 @@ export default defineConfig({
   server: {
     port: 5566,
     open: true
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        intro: resolve(__dirname, 'intro.html'),
+        game: resolve(__dirname, 'game.html')
+      }
+    }
   }
 })

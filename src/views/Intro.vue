@@ -157,6 +157,7 @@ export default {
     startGame(_value) {
       this.selectedLevel = _value
       this.enableBGM() // 任何交互都觸發BGM
+      this.stopBGM()
       this.router.push({
         path: '/game',
         query: {

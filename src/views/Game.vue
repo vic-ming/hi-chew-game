@@ -928,12 +928,12 @@ export default {
         });
 
         setTimeout(() => {
-          this.router.push({path: '/'})
+          window.location.href = 'https://hi-chew.com.tw/';
         }, 5000);
       } catch (error) {
         console.error('API調用錯誤:', error);
         setTimeout(() => {
-          this.router.push({path: '/'})
+          window.location.href = 'https://hi-chew.com.tw/';
         }, 5000);
       }
     }
