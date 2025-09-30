@@ -238,11 +238,11 @@ export default {
 }
 .pc-next-btn-2-1{
   position: absolute;
-  width: 21.5%;
-  height: 82.7%;
-  top: 9.4%;
-  left: 6%;
-  border-radius: 17px;
+  width: 19.9%;
+  height: 71.7%;
+  top: 20.2%;
+  left: 9.5%;
+  border-radius: 34px;
   cursor: pointer;
   rotate: 170deg;
   background-color: rgba(34, 146, 183, 0.1);
@@ -250,11 +250,11 @@ export default {
 }
 .pc-next-btn-2-2{
   position: absolute;
-  width: 21.5%;
-  height: 82.7%;
-  top: 9.4%;
-  right: 6%;
-  border-radius: 17px;
+  width: 19.9%;
+  height: 71.7%;
+  top: 20.2%;
+  right: 9%;
+  border-radius: 34px;
   cursor: pointer;
   rotate: 10deg;
   background-color: rgba(34, 146, 183, 0.1);
@@ -264,7 +264,7 @@ export default {
 .pc-next-btn-2-1:hover, .pc-next-btn-2-2:hover,.mb-next-btn-2-1:hover, .mb-next-btn-2-2:hover{
   background-color: rgba(34, 146, 183, 0.3);
   box-shadow: 0 0 20px #2292b7, 0 0 40px rgba(34, 146, 183, 0.5);
-  transform: scale(1.02);
+  transform: scale(1);
 }
 @keyframes wiggle {
   0%, 100% { transform: rotate(14deg); }
