@@ -515,6 +515,15 @@ export default {
     initializeAudio() {
       // 初始化音效
       try {
+        // 檢查是否已經有 BGM 在播放，避免重複初始化
+        const existingBGM = document.querySelector('audio[data-bgm-source="intro"]');
+        if (existingBGM && !existingBGM.paused) {
+          console.log('檢測到 Intro BGM 正在播放，重用現有音頻');
+          this.bgmAudio = existingBGM;
+          this.bgmInitialized = true;
+          return;
+        }
+        
         this.bgmAudio = new Audio(bgmSound);
         this.successAudio = new Audio(successSound);
         this.collisionAudio = new Audio(collisionSound);
@@ -523,6 +532,7 @@ export default {
         // 設置BGM屬性
         this.bgmAudio.loop = true;
         this.bgmAudio.volume = 0.3; // BGM音量較低
+        this.bgmAudio.setAttribute('data-bgm-source', 'game'); // 為 Game BGM 添加標識
         
         // 設置音效屬性
         [this.successAudio, this.collisionAudio, this.failAudio].forEach(audio => {
@@ -551,6 +561,13 @@ export default {
         // 確保只有一個BGM實例在播放
         if (!this.bgmAudio.paused) {
           console.log('BGM 已經在播放中，跳過重複播放');
+          return;
+        }
+        
+        // 檢查頁面上是否已經有其他 BGM 在播放
+        const existingIntroBGM = document.querySelector('audio[data-bgm-source="intro"]');
+        if (existingIntroBGM && !existingIntroBGM.paused && existingIntroBGM !== this.bgmAudio) {
+          console.log('檢測到 Intro BGM 正在播放，停止當前 BGM 初始化');
           return;
         }
         

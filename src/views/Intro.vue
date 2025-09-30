@@ -118,6 +118,9 @@ export default {
         this.bgmAudio.loop = true
         this.bgmAudio.volume = 0.5
         
+        // 為音頻元素添加標識，方便 Game.vue 檢測
+        this.bgmAudio.setAttribute('data-bgm-source', 'intro')
+        
         // 嘗試自動播放，如果失敗則顯示提示
         this.playBGM()
       } catch (error) {
@@ -157,7 +160,7 @@ export default {
     startGame(_value) {
       this.selectedLevel = _value
       this.enableBGM() // 任何交互都觸發BGM
-      this.stopBGM()
+      // 移除 stopBGM() 調用，讓 BGM 繼續播放到遊戲頁面
       this.router.push({
         path: '/game',
         query: {

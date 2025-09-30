@@ -1,4 +1,7 @@
 import { createApp } from 'vue'
+import router from './router'
 import Game from './views/Game.vue'
 
-createApp(Game).mount('#app')
+const app = createApp(Game)
+app.use(router)
+app.mount('#app')
