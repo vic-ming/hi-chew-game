@@ -4,7 +4,7 @@ import Game from '../views/Game.vue'
 
 const routes = [
   {
-    path: '/intro',
+    path: '/',
     name: 'Intro',
     component: Intro
   },
