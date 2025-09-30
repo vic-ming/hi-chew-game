@@ -137,9 +137,9 @@ export default {
         try {
           this.bgmAudio.play().then(() => {
             this.bgmStarted = true
-            console.log('BGM 播放成功')
+            // console.log('BGM 播放成功')
           }).catch(error => {
-            console.warn('BGM 播放失敗:', error)
+            // console.warn('BGM 播放失敗:', error)
             this.bgmStarted = false
           })
         } catch (error) {
@@ -161,14 +161,16 @@ export default {
       this.selectedLevel = _value
       this.enableBGM() // 任何交互都觸發BGM
       // 移除 stopBGM() 調用，讓 BGM 繼續播放到遊戲頁面
-      this.router.push({
-        path: '/game',
-        query: {
-          candy: this.selectedCandy,
-          level: this.selectedLevel,
-          uid: this.uid
-        }
+      
+      // 构建查询参数
+      const queryParams = new URLSearchParams({
+        candy: this.selectedCandy,
+        level: this.selectedLevel,
+        uid: this.uid
       })
+      
+      // 跳转到 game.html 而不是使用路由
+      window.location.href = `game?${queryParams.toString()}`
     },
     
     stepNext(_value) {
