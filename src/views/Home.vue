@@ -4,13 +4,13 @@
     <div class="home-container" v-if="step === 1">
       <div class="pc-view">
         <div class="relative pc-out">
-          <img class="pc-img" src="@/assets/images/pc-step-1.webp" alt="" >
+          <img class="pc-img" src="@/assets/images/pc-step-1-new.webp" alt="" >
           <div class="pc-next-btn-1" @click="stepNext"></div>
         </div>
       </div>
       <div class="mb-view">
         <div class="relative">
-          <img src="@/assets/images/mb-step-1.webp" alt="">
+          <img src="@/assets/images/mb-step-1-new.webp" alt="">
           <div class="mb-next-btn-1" @click="stepNext"></div>
         </div>
       </div>
@@ -83,11 +83,13 @@ export default {
         bgmAudio: null,
         bgmStarted: false,
         selectedLevel: null,
-        selectedCandy: null
+        selectedCandy: null,
+        uid: null
     }
   },
   mounted() {
     this.initializeBGM()
+    this.uid = this.$route.query.uid || null
   },
   beforeUnmount() {
     this.stopBGM()
@@ -142,7 +144,8 @@ export default {
         path: '/game',
         query: {
           candy: this.selectedCandy,
-          level: this.selectedLevel
+          level: this.selectedLevel,
+          uid: this.uid
         }
       })
     },

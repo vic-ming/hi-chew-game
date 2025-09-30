@@ -170,6 +170,7 @@ export default {
       svgRectCacheTime: 0,
 
       loading: true,
+      uid: null,
     }
   },
   computed: {
@@ -227,6 +228,7 @@ export default {
     // 從路由查詢參數獲取 candy 和 level 值
     this.selectedCandy = this.$route.query.candy || '1';
     this.selectedLevel = this.$route.query.level || 'a';
+    this.uid = this.$route.query.uid || null;
     
     // 根據選擇的糖果設置圖片
     this.setCandyImage();
@@ -602,7 +604,7 @@ export default {
       const gameAreaWidth = this.gameArea ? this.gameArea.offsetWidth : 700;
       const gameAreaHeight = this.gameArea ? this.gameArea.offsetHeight : window.innerHeight * 0.9;
       
-      console.log('遊戲區域實際尺寸:', gameAreaWidth, 'x', gameAreaHeight);
+      // console.log('遊戲區域實際尺寸:', gameAreaWidth, 'x', gameAreaHeight);
       
       // 動態調整遊戲容器高度以容納整個路徑
       this.adjustGameContainerHeight();
@@ -779,41 +781,23 @@ export default {
       if (this.scoreInterval) {
         clearInterval(this.scoreInterval);
       }
-      
 
+      // 記錄遊戲結果到API
+      this.recordGameResult('fail');
       
       // 停止震動效果
       setTimeout(() => {
         this.isShaking = false;
       }, 500);
-      
-      // 開始倒數計時並自動重新開始
-      this.startAutoRestart();
-    },
-    
-    startAutoRestart() {
-      this.countdown = 3;
-      
-      // 清除之前的計時器
-      if (this.restartTimer) {
-        clearInterval(this.restartTimer);
-      }
-      
-      // 開始倒數計時
-      this.restartTimer = setInterval(() => {
-        this.countdown--;
-        
-        if (this.countdown <= 0) {
-          clearInterval(this.restartTimer);
-          this.restartTimer = null;
-          this.restartGame();
-        }
-      }, 1000);
     },
     
     winGame() {
       this.gameState = 'completed';
       this.isMouseDown = false;
+
+
+      // 記錄遊戲結果到API
+      this.recordGameResult('win');
       
       if (this.scoreInterval) {
         clearInterval(this.scoreInterval);
@@ -821,6 +805,32 @@ export default {
       
       // 播放成功音效
       this.playSound(this.successAudio);
+    },
+
+    // 記錄遊戲結果到API
+    async recordGameResult(result) {
+      try {
+        const gameData = {
+          type: result,
+          uid: this.uid
+        };
+
+        const response = await fetch('http://test/recordGame', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(gameData)
+        });
+
+        if (response.ok) {
+          console.log('遊戲結果已成功記錄');
+        } else {
+          console.error('記錄遊戲結果失敗:', response.statusText);
+        }
+      } catch (error) {
+        console.error('API調用錯誤:', error);
+      }
     }
   }
 }
